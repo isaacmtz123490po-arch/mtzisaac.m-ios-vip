@@ -23,11 +23,11 @@ button.ok{border-color:var(--ok);color:var(--ok)}button.er{border-color:var(--er
 code,pre,textarea.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
 header{display:flex;gap:6px;align-items:center;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top));background:var(--p);border-bottom:1px solid var(--b);flex-wrap:wrap}
 header h1{font-size:15px;margin-right:auto}
-#st{display:flex;gap:8px;align-items:center;padding:4px 10px;font-size:12px;color:var(--m);background:var(--p);border-bottom:1px solid var(--b)}
+#st{display:flex;gap:8px;align-items:center;padding:4px 10px;font-size:12px;color:var(--m);background:var(--p);border-bottom:1px solid var(--b);min-height:26px}
 #dot{width:8px;height:8px;border-radius:50%;background:var(--m);flex:none}
 #dot.ok{background:var(--ok)}#dot.er{background:var(--er)}#dot.load{background:var(--a);animation:p 1s infinite}
 @keyframes p{50%{opacity:.3}}
-#bar{height:3px;background:var(--b);display:none}#bar i{display:block;height:100%;width:0;background:var(--a)}
+#bar{height:3px;background:var(--b);display:none}#bar i{display:block;height:100%;width:0;background:var(--a);transition:width .2s}
 #cfg{display:none;padding:8px 10px;background:var(--p);border-bottom:1px solid var(--b);gap:8px;flex-direction:column}
 #cfg.on{display:flex}
 #cfg label{font-size:12px;color:var(--m);display:flex;flex-direction:column;gap:3px}
@@ -91,13 +91,13 @@ nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
 
 <header>
   <h1>⌨️ Metatron AI</h1>
-  <select id="model"></select>
+  <select id="model" aria-label="Modelo"></select>
   <button id="load" class="pri">Cargar</button>
   <button id="bmm" title="Modelos descargados">📦</button>
   <button id="bcfg">⚙️</button>
 </header>
 <div id="bar"><i></i></div>
-<div id="st"><span id="dot"></span><span id="stxt">Sin modelo cargado</span></div>
+<div id="st" aria-live="polite"><span id="dot"></span><span id="stxt">Sin modelo cargado</span></div>
 
 <section id="cfg">
   <label>Instrucciones del agente (editable)
@@ -120,7 +120,6 @@ nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
 </nav>
 
 <div id="app">
-  <!-- ARCHIVOS -->
   <section class="pn on" id="pf">
     <div class="ph"><b>Proyecto</b></div>
     <div id="tools">
@@ -137,7 +136,6 @@ nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
     <input type="file" id="din" webkitdirectory multiple hidden>
   </section>
 
-  <!-- TAREA -->
   <section class="pn" id="pt">
     <div class="ph"><b>Tarea</b>
       <select id="mode">
@@ -148,16 +146,15 @@ nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
       </select>
       <button id="bclr">Limpiar</button>
     </div>
-    <div id="chat"></div>
+    <div id="chat" aria-live="polite"></div>
     <div id="meter"></div>
     <div id="box">
-      <textarea id="inp" rows="1" placeholder="Describe la tarea… (marca ☑ los archivos que debe ver)"></textarea>
+      <textarea id="inp" rows="1" placeholder="Describe la tarea… (Ctrl+Enter envía · marca ☑ los archivos que debe ver)"></textarea>
       <button id="send" class="pri" disabled>Ejecutar</button>
       <button id="stop" style="display:none">⏹</button>
     </div>
   </section>
 
-  <!-- CAMBIOS -->
   <section class="pn" id="pc">
     <div class="ph"><b>Cambios propuestos</b>
       <button id="aall" class="ok">Aplicar todo</button>
@@ -188,11 +185,11 @@ try { hasGPU = !!navigator.gpu && !!(await navigator.gpu.requestAdapter()); } ca
 let webllm = null;
 if (hasGPU) { try { webllm = await import("https://esm.run/@mlc-ai/web-llm"); } catch (e) { console.warn("WebLLM no cargó", e); } }
 
-/* ============ Modelos ============ */
+/* ============ Modelos (IDs verificados de WebLLM) ============ */
 const RAM = navigator.deviceMemory || (IOS ? 4 : 8);
-const CAP = !MOBILE ? 99 : IOS ? 3 : RAM >= 8 ? 5 : RAM >= 6 ? 3 : 1; // GB máx. recomendado
+const CAP = !MOBILE ? 99 : IOS ? 3 : RAM >= 8 ? 5 : RAM >= 6 ? 3 : 1;
 const GPU_MODELS = [
-  ["Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC", "Coder 0.5B (~0.5 GB) · móvil básico", 1],
+  ["Qwen2.5-0.5B-Instruct-q4f16_1-MLC", "Qwen2.5 0.5B (~0.5 GB) · móvil básico", 1],
   ["Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC", "Coder 1.5B (~1.6 GB) · móvil recomendado", 3],
   ["Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC", "Coder 3B (~2.5 GB) · equilibrado", 5],
   ["Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC", "Coder 7B (~5 GB) · mejor calidad", 9],
@@ -213,14 +210,14 @@ $("model").innerHTML = (GPUOK ? grp("GPU (WebGPU) · rápido", GPU_MODELS, "gpu"
   if (pick) $("model").value = pick.value;
 }
 
-/* ============ Prompt del agente ============ */
+/* ============ Prompt ============ */
 const IDENT = "Tu nombre es Metatron AI. SIEMPRE te llamas y te presentas como Metatron AI; nunca digas que eres Qwen, Llama u otro modelo, ni menciones a sus creadores.\n";
 const SYS_DEF = `Eres Metatron AI, un agente de programación local, estilo Codex. Stack del usuario: HTML estricto con CSS/JS, Unity C# para móviles, Python para automatización.
 Recibes ARCHIVOS del proyecto y una TAREA. Respuestas directas, sin rodeos.
 REGLAS:
 - Analiza estructura, nombres de variables y lógica existentes. NO reescribas archivos completos; cambia lo mínimo necesario.
 - Primero 1-3 líneas explicando qué cambias y por qué.
-- Después, cada cambio con este formato EXACTO (el texto de BUSCAR debe copiarse idéntico del archivo, con 2-4 líneas de contexto):
+- Después, cada cambio con este formato EXACTO (BUSCAR debe copiarse idéntico del archivo, con 2-4 líneas de contexto):
 FILE: ruta/archivo.ext
 <<<<<<< SEARCH
 (líneas originales exactas)
@@ -257,9 +254,9 @@ $("bcfg").onclick = () => $("cfg").classList.toggle("on");
 
 /* ============ Estado ============ */
 const ws = new Map(), orig = new Map(), inc = new Set();
-let sel = null, edits = [], undo = [], dirH = null, engine = null, busy = false, ctxTok = 4096, prev = null;
+let sel = null, edits = [], undo = [], dirH = null, engine = null, engineId = "", busy = false, ctxTok = 4096, prev = null;
 let applied = [], impLeft = 0;
-const LIB = new Map(); // apartado permanente (guardado en IndexedDB)
+const LIB = new Map();
 const getF = p => ws.has(p) ? ws.get(p) : (LIB.get(p)?.text ?? null);
 const IGN = new Set(["node_modules", ".git", "dist", "build", "__pycache__", "Library", "Temp", "obj"]);
 const persist = () => { try { localStorage.setItem("cx_ws", JSON.stringify([...ws])); } catch {} };
@@ -268,7 +265,9 @@ try { for (const [k, v] of JSON.parse(localStorage.getItem("cx_ws") || "[]")) { 
 const setSt = (t, c = "") => { $("stxt").textContent = t; $("dot").className = c; };
 if (!GPUOK) setSt("Sin WebGPU en este navegador: se usará modo CPU (más lento). Para GPU usa Chrome/Edge actual o Safari de iOS/macOS 26+", "");
 
-/* ============ Pestañas (móvil) ============ */
+const scrollBottom = () => { const c = $("chat"); c.scrollTop = c.scrollHeight; };
+
+/* ============ Pestañas ============ */
 function tab(id) {
   document.querySelectorAll(".pn").forEach(p => p.classList.toggle("on", p.id === id));
   document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.p === id));
@@ -276,7 +275,7 @@ function tab(id) {
 $("nav").onclick = e => { if (e.target.dataset?.p) tab(e.target.dataset.p); };
 
 /* ============ Archivos ============ */
-const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function tree() {
   const t = $("tree");
   $("ed").readOnly = !ws.has(sel);
@@ -330,7 +329,7 @@ $("bdel").onclick = () => {
 };
 
 /* ============ Contexto / presupuesto ============ */
-const est = s => Math.ceil(s.length / 3.2);
+const est = s => Math.ceil((s || "").length / 3.2);
 function ctxText(budgetChars) {
   let out = "", cut = false;
   for (const p of inc) {
@@ -361,22 +360,31 @@ $("mode").onchange = meter; $("maxt").onchange = meter;
 
 /* ============ Chat ============ */
 function md(t) {
-  return t.split(/```/).map((p, i) => i % 2
-    ? `<pre><code>${esc(p.slice(p.indexOf("\n") + 1).replace(/\n$/, ""))}</code></pre>`
-    : esc(p).replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")).join("");
+  return String(t).split(/```/).map((p, i) => {
+    if (i % 2) { const nl = p.indexOf("\n"); const code = nl >= 0 ? p.slice(nl + 1).replace(/\n$/, "") : p; return `<pre><code>${esc(code)}</code></pre>`; }
+    return esc(p).replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>");
+  }).join("");
 }
 function msg(cls, html, raw) {
   const c = $("chat"); if (c.querySelector(".hint")) c.innerHTML = "";
   const d = document.createElement("div"); d.className = "m " + cls;
-  raw ? d.textContent = html : d.innerHTML = html; c.appendChild(d); c.scrollTop = c.scrollHeight; return d;
+  raw ? d.textContent = html : d.innerHTML = html; c.appendChild(d); scrollBottom(); return d;
 }
 function hint() { $("chat").innerHTML = '<div class="hint"><h3>Metatron AI</h3><p>1) Elige modelo y pulsa Cargar.<br>2) Abre tus archivos (pestaña Archivos) y marca ☑ los relevantes.<br>3) Escribe la tarea. Revisa y aplica los cambios en la pestaña Cambios.</p></div>'; }
 let LOG = []; try { LOG = JSON.parse(localStorage.getItem("cx_log") || "[]"); } catch {}
-const logSave = () => { try { localStorage.setItem("cx_log", JSON.stringify(LOG.slice(-60))); } catch {} };
-const logPush = (c, t) => { LOG.push({ c, t }); LOG = LOG.slice(-60); logSave(); };
+const logSave = () => {
+  try {
+    let arr = LOG.slice(-60);
+    let out = JSON.stringify(arr);
+    while (out.length > 300000 && arr.length > 5) { arr.shift(); out = JSON.stringify(arr); }
+    localStorage.setItem("cx_log", out); LOG = arr;
+  } catch { try { localStorage.setItem("cx_log", "[]"); } catch {} }
+};
+const logPush = (c, t) => { LOG.push({ c, t }); logSave(); };
 hint();
 if (LOG.length) {
   $("chat").innerHTML = ""; LOG.forEach(x => msg(x.c, x.c === "u" ? x.t : md(x.t), x.c === "u"));
+  scrollBottom();
   const lu = [...LOG].reverse().find(x => x.c === "u"), lb = [...LOG].reverse().find(x => x.c === "bt");
   if (lu && lb) prev = { u: lu.t.slice(0, 300), a: lb.t };
 }
@@ -395,8 +403,8 @@ async function mkGPU(id) {
       for await (const ch of s) { onTok(ch.choices[0]?.delta?.content); fin = ch.choices[0]?.finish_reason || fin; }
       return fin;
     },
-    stop() { e.interruptGenerate(); },
-    unload() { return e.unload(); }
+    stop() { try { e.interruptGenerate(); } catch {} },
+    unload() { try { return e.unload(); } catch {} }
   };
 }
 async function mkCPU(id) {
@@ -407,7 +415,8 @@ async function mkCPU(id) {
     else if (p.status === "ready") setSt("Inicializando…", "load");
   };
   const tok = await tf.AutoTokenizer.from_pretrained(id, { progress_callback: cb });
-  const model = await tf.AutoModelForCausalLM.from_pretrained(id, { dtype: "q8", device: "wasm", progress_callback: cb });
+  const dtype = MOBILE ? "q4" : "q8";
+  const model = await tf.AutoModelForCausalLM.from_pretrained(id, { dtype, device: "wasm", progress_callback: cb });
   ctxTok = 3072; $("maxt").value = Math.min(+$("maxt").value, 512);
   let stopper = null;
   return {
@@ -419,30 +428,38 @@ async function mkCPU(id) {
       const gl = (res?.dims?.[1] ?? 0) - inputs.input_ids.dims[1];
       return gl >= o.max - 1 ? "length" : "stop";
     },
-    stop() { stopper?.interrupt(); },
-    unload() { return model.dispose?.(); }
+    stop() { try { stopper?.interrupt(); } catch {} },
+    unload() { try { return model.dispose?.(); } catch {} }
   };
 }
 $("load").onclick = async () => {
   if (busy) return; const v = $("model").value, kind = v.slice(0, 3), id = v.slice(4);
   if (!v) return;
+  if (engine && engineId === v) { setSt(readyTxt, "ok"); return; }
   busy = true; $("load").disabled = true; $("send").disabled = true; $("bar").style.display = "block"; bar(0); setSt("Preparando…", "load");
   localStorage.setItem("cx_loading", v);
   try {
-    if (engine) { try { await engine.unload(); } catch {} engine = null; }
+    if (engine) { try { await engine.unload(); } catch {} engine = null; engineId = ""; }
     engine = kind === "gpu" ? await mkGPU(id) : await mkCPU(id);
+    engineId = v;
     localStorage.setItem("cx_model2", v);
     readyTxt = "Metatron AI listo · " + id.split("/").pop().replace("-MLC", "") + (kind === "cpu" ? " (CPU)" : " (GPU)");
     setSt(readyTxt, "ok"); $("send").disabled = false; meter();
-  } catch (e) { console.error(e); engine = null; setSt("Error al cargar: " + (e.message || e) + (kind === "gpu" ? " · prueba un modelo más pequeño" : ""), "er"); }
+  } catch (e) {
+    console.error(e); engine = null; engineId = "";
+    const hint = kind === "gpu" ? " · prueba un modelo más pequeño o recarga la página" : "";
+    setSt("Error al cargar: " + (e.message || e) + hint, "er");
+  }
   finally { localStorage.removeItem("cx_loading"); busy = false; $("load").disabled = false; setTimeout(() => $("bar").style.display = "none", 600); refreshCache(); }
 };
 
-/* ============ Parser y aplicación de edits ============ */
+/* ============ Parser y aplicación ============ */
 function parse(t) {
-  const re = /FILE:\s*(.+?)\s*\n<<<<<<< SEARCH\n([\s\S]*?)\n?=======\n([\s\S]*?)\n?>>>>>>> REPLACE/g, r = []; let m;
-  while ((m = re.exec(t))) r.push({ path: m[1].replace(/[`*"']/g, "").trim(), search: m[2], rep: m[3], st: "pend" });
-  return r;
+  const out = [];
+  const re = /FILE:\s*[`"']?([^\n`"']+?)[`"']?\s*\n<<<<<<< SEARCH\n([\s\S]*?)\n?=======\n([\s\S]*?)\n?>>>>>>> REPLACE/g;
+  let m;
+  while ((m = re.exec(t))) out.push({ path: m[1].trim(), search: m[2], rep: m[3], st: "pend" });
+  return out;
 }
 function findLines(cur, s) {
   const i = cur.indexOf(s); if (i >= 0) return [i, i + s.length];
@@ -474,8 +491,9 @@ function renderEdits() {
   $("nb").style.display = pend ? "" : "none"; $("nb").textContent = pend;
   if (!edits.length) { b.innerHTML = '<div class="hint">Aquí aparecerán los cambios que proponga la IA.</div>'; return; }
   b.innerHTML = edits.map((e, i) => {
-    const diff = (e.search ? e.search.split("\n").map(l => `<div class="d">- ${esc(l)}</div>`).join("") : `<div class="a">+ (archivo nuevo)</div>`) + e.rep.split("\n").map(l => `<div class="a">+ ${esc(l)}</div>`).join("");
-    const tag = e.st === "ok" ? '<span class="tag ok">aplicado</span>' : e.st === "fail" ? `<span class="tag er">falló: ${e.why}</span>` : e.st === "skip" ? '<span class="tag">descartado</span>' : '<span class="tag">pendiente</span>';
+    const exists = ws.has(e.path) || LIB.has("perm/" + e.path);
+    const diff = (e.search ? e.search.split("\n").map(l => `<div class="d">- ${esc(l)}</div>`).join("") : `<div class="a">+ ${exists ? "(sobrescribir " : "(nuevo "}archivo)</div>`) + e.rep.split("\n").map(l => `<div class="a">+ ${esc(l)}</div>`).join("");
+    const tag = e.st === "ok" ? '<span class="tag ok">aplicado</span>' : e.st === "fail" ? `<span class="tag er">falló: ${esc(e.why)}</span>` : e.st === "skip" ? '<span class="tag">descartado</span>' : '<span class="tag">pendiente</span>';
     const btn = e.st === "pend" || e.st === "fail" ? `<button class="ok" data-a="${i}">Aplicar</button><button class="er" data-x="${i}">Descartar</button>` : "";
     return `<div class="ed"><header><b>${esc(e.path)}</b>${tag}${btn}</header><pre class="df">${diff}</pre></div>`;
   }).join("");
@@ -498,7 +516,7 @@ async function run() {
   const mode = $("mode").value, sys = IDENT + $("sys").value + MODE[mode];
   msg("u", task, true); logPush("u", task);
   const urls = [...new Set(task.match(/https?:\/\/[^\s)>"']+/g) || [])].slice(0, 3);
-  for (const u of urls) await importUrl(u);
+  for (const u of urls) { try { await importUrl(u); } catch {} }
   const { out: ctx, cut } = ctxText(budget());
   if (cut) msg("bt er", "⚠ Algunos archivos se truncaron u omitieron por el límite de contexto. Marca menos archivos o usa archivos más pequeños.", true);
   const el = msg("bt", "…"); let out = "", t0 = performance.now(), n = 0;
@@ -508,7 +526,7 @@ async function run() {
   try {
     try { window.__wl = await navigator.wakeLock?.request("screen"); } catch {}
     const opts = { temp: +$("temp").value, top_p: +$("topp").value, max: +$("maxt").value };
-    const onTok = d => { if (d) { out += d; n++; el.innerHTML = md(out); $("chat").scrollTop = 1e9; } };
+    const onTok = d => { if (d) { out += d; n++; el.innerHTML = md(out); scrollBottom(); } };
     stopFlag = false;
     let fin = await engine.gen(messages, opts, onTok), rounds = 0;
     const maxR = +$("auto").value;
@@ -519,12 +537,13 @@ async function run() {
       fin = await engine.gen(cm, { ...opts, max: Math.max(128, Math.min(opts.max, room)) }, onTok);
     }
     const s = ((performance.now() - t0) / 1000).toFixed(1);
-    el.insertAdjacentHTML("beforeend", `<div class="meta">${s}s · ~${(n / (s || 1)).toFixed(1)} tok/s</div>`);
+    el.insertAdjacentHTML("beforeend", `<div class="meta">${s}s · ~${(n / (s || 1)).toFixed(1)} tok/s${stopFlag ? " · detenido" : ""}</div>`);
     prev = { u: task.slice(0, 300), a: out }; logPush("bt", out);
     const found = parse(out);
     if (found.length) {
       edits = found; renderEdits();
       el.insertAdjacentHTML("beforeend", `<div class="meta">✔ ${found.length} cambio(s) propuesto(s)</div>`);
+      scrollBottom();
       if (impLeft > 0) {
         snap(); found.forEach(applyOne);
         const bad = found.some(x => x.st === "fail"), f = found[0].path;
@@ -535,28 +554,33 @@ async function run() {
     } else impLeft = 0;
   } catch (e) {
     console.error(e); el.classList.add("er"); el.textContent = "Error: " + (e.message || e);
-    if (/lost|device|memory|OOM|out of/i.test(String(e.message || e))) { engine = null; el.textContent += "\nPosible falta de memoria o el sistema suspendió la GPU (común en móvil al cambiar de app). Pulsa Cargar de nuevo o usa un modelo más pequeño."; setSt("Modelo descargado de memoria: pulsa Cargar", "er"); }
+    if (/lost|device|memory|OOM|out of/i.test(String(e.message || e))) { engine = null; engineId = ""; el.textContent += "\nPosible falta de memoria o el sistema suspendió la GPU (común en móvil al cambiar de app). Pulsa Cargar de nuevo o usa un modelo más pequeño."; setSt("Modelo descargado de memoria: pulsa Cargar", "er"); }
   }
   finally { window.__wl?.release?.(); if (engine && readyTxt) setSt(readyTxt, "ok"); busy = false; $("send").style.display = ""; $("stop").style.display = "none"; $("send").disabled = !engine; }
 }
 $("send").onclick = run; $("stop").onclick = () => { stopFlag = true; engine?.stop(); };
 $("inp").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && busy) { stopFlag = true; engine?.stop(); } });
 
 /* ============ Vista previa ============ */
 $("bprev").onclick = () => {
   const names = [...ws.keys()];
   const h = sel?.endsWith(".html") ? sel : names.find(n => /(^|\/)index\.html$/.test(n)) || names.find(n => n.endsWith(".html"));
   if (!h) return alert("No hay ningún .html en el proyecto.");
-  const find = (ref) => { const r = ref.replace(/^\.\//, ""); return names.find(n => n === r || n.endsWith("/" + r)); };
+  const find = (ref) => { const r = ref.replace(/^\.?\//, ""); return names.find(n => n === r || n.endsWith("/" + r)); };
   let html = ws.get(h)
     .replace(/<link[^>]*href=["']([^"']+)["'][^>]*>/gi, (m, u) => { const f = find(u); return f && /\.css$/.test(f) ? `<style>${ws.get(f)}</style>` : m; })
-    .replace(/<script([^>]*)src=["']([^"']+)["']([^>]*)>\s*<\/script>/gi, (m, a, u) => { const f = find(u); return f ? `<script${a}${""}>${ws.get(f).replace(/<\/script/gi, "<\\/script")}<\/script>` : m; });
+    .replace(/<script([^>]*)src=["']([^"']+)["']([^>]*)>\s*<\/script>/gi, (m, a, u) => { const f = find(u); return f ? `<script${a}>${ws.get(f).replace(/<\/script/gi, "<\\/script")}<\/script>` : m; });
   $("fr").srcdoc = html; $("pv").classList.add("on");
 };
 $("pvx").onclick = () => { $("pv").classList.remove("on"); $("fr").srcdoc = ""; };
 
-/* ============ Guardar / ZIP ============ */
-function crc32(b) { if (!crc32.t) { crc32.t = []; for (let n = 0, c; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crc32.t[n] = c; } } let c = -1; for (let i = 0; i < b.length; i++) c = crc32.t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; }
+/* ============ ZIP / guardar ============ */
+let _crcT = null;
+function crc32(b) {
+  if (!_crcT) { _crcT = []; for (let n = 0, c; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; _crcT[n] = c; } }
+  let c = -1; for (let i = 0; i < b.length; i++) c = _crcT[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0;
+}
 function zip(files) {
   const enc = new TextEncoder(), parts = [], cd = []; let off = 0;
   for (const f of files) {
@@ -596,7 +620,7 @@ $("bsave").onclick = async () => {
 
 tree(); renderEdits();
 
-/* ============ Gestor de modelos (descarga persistente) ============ */
+/* ============ Gestor de modelos ============ */
 const ALL = () => [
   ...(GPUOK ? GPU_MODELS.filter(([id]) => recs.has(id)).map(([id, n, gb]) => ["gpu:" + id, n, gb]) : []),
   ...CPU_MODELS.map(([id, n, gb]) => ["cpu:" + id, n, gb])
@@ -617,7 +641,7 @@ async function refreshCache() {
   cached.clear();
   for (const [v] of ALL()) if (await isCached(v)) cached.add(v);
   for (const o of $("model").options) {
-    const base = o.dataset.base ?? (o.dataset.base = o.textContent);
+    const base = o.dataset.base ?? (o.dataset.base = o.textContent.replace(/^[✔⬇]\s*/, ""));
     o.textContent = (cached.has(o.value) ? "✔ " : "⬇ ") + base;
   }
 }
@@ -626,7 +650,7 @@ async function dl(v) {
   const kind = v.slice(0, 3), id = v.slice(4), mx = $("maxt").value;
   busy = true; $("load").disabled = true; $("send").disabled = true; $("bar").style.display = "block"; bar(0);
   try {
-    if (engine) { try { await engine.unload(); } catch {} engine = null; readyTxt = ""; }
+    if (engine) { try { await engine.unload(); } catch {} engine = null; engineId = ""; readyTxt = ""; }
     const e = kind === "gpu" ? await mkGPU(id) : await mkCPU(id);
     try { await e.unload(); } catch {}
     setSt("✔ Descargado y guardado: " + id.split("/").pop().replace("-MLC", "") + " · pulsa Cargar para usarlo", "ok");
@@ -647,12 +671,12 @@ async function renderMM() {
     const s = await navigator.storage.estimate(), p = await navigator.storage.persisted?.();
     st = `Almacenamiento: ${(s.usage / 1e9).toFixed(2)} GB usados de ${(s.quota / 1e9).toFixed(1)} GB · protegido contra borrado: ${p ? "sí" : "no (el navegador podría limpiarlo)"}`;
   } catch {}
-  $("mml").innerHTML = `<div class="meta">${st}</div>
+  $("mml").innerHTML = `<div class="meta">${esc(st)}</div>
     <label class="meta"><input type="checkbox" id="autold" ${localStorage.getItem("cx_auto") !== "0" ? "checked" : ""}> Al abrir la página, cargar solo el último modelo si ya está descargado</label>
     <button id="dall" class="pri">⬇ Descargar todos los compatibles con este equipo</button>` +
     ALL().map(([v, n, gb]) => {
       const c = cached.has(v), big = gb > CAP;
-      return `<div class="mr"><b>${c ? "✔" : "⬇"} ${esc(n)}</b>${big ? '<span class="tag">pesado para este equipo</span>' : c ? `<button data-use="${v}" class="ok">Usar</button><button data-del="${v}" class="er">Borrar</button>` : `<button data-dl="${v}" class="pri">Descargar</button>`}</div>`;
+      return `<div class="mr"><b>${c ? "✔" : "⬇"} ${esc(n)}</b>${big ? '<span class="tag">pesado para este equipo</span>' : c ? `<button data-use="${esc(v)}" class="ok">Usar</button><button data-del="${esc(v)}" class="er">Borrar</button>` : `<button data-dl="${esc(v)}" class="pri">Descargar</button>`}</div>`;
     }).join("");
 }
 $("bmm").onclick = async () => { await refreshCache(); await renderMM(); $("mm").classList.add("on"); };
@@ -677,8 +701,12 @@ const IMP = {
 function improve(f, key = "mejorar") {
   if (!engine) { setSt("Carga un modelo primero para poder mejorar el archivo", "er"); return; }
   if (busy) return;
-  const o = [f, ...[...inc].filter(x => x !== f)]; inc.clear(); o.forEach(x => inc.add(x)); tree();
-  $("mode").value = "edit"; $("inp").value = `[${f}] ${IMP[key] || IMP.mejorar}`; run();
+  const prevMode = $("mode").value;
+  const o = [f, ...[...inc].filter(x => x !== f)];
+  inc.clear(); o.forEach(x => inc.add(x)); tree();
+  $("mode").value = "edit";
+  $("inp").value = `[${f}] ${IMP[key] || IMP.mejorar}`;
+  run().finally(() => { $("mode").value = prevMode; });
 }
 function suggest(f) {
   const fa = esc(f).replace(/"/g, "&quot;");
@@ -692,7 +720,7 @@ $("chat").addEventListener("click", e => {
   if (k === "x3") { impLeft = 3; improve(f, "mejorar"); } else { impLeft = +$("imp").value || 0; improve(f, k); }
 });
 
-/* ============ Arranque: reanudar y cargar desde caché ============ */
+/* ============ Arranque: reanudar / cargar desde caché ============ */
 (async () => {
   await refreshCache();
   const crashed = localStorage.getItem("cx_loading");
@@ -705,8 +733,8 @@ $("chat").addEventListener("click", e => {
   } else setSt("Aún no descargado: pulsa Cargar. Se guarda y no se vuelve a bajar (si se corta, continúa donde quedó).", "");
 })();
 
-/* ============ URL → apartado permanente ============ */
-const ea = s => esc(String(s)).replace(/"/g, "&quot;");
+/* ============ Apartado permanente (URLs) ============ */
+const ea = s => esc(s);
 const idb = () => new Promise((res, rej) => { const q = indexedDB.open("metatron", 1); q.onupgradeneeded = () => q.result.createObjectStore("lib", { keyPath: "key" }); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
 async function dbAll() { const d = await idb(); return new Promise(r => { const q = d.transaction("lib").objectStore("lib").getAll(); q.onsuccess = () => r(q.result); q.onerror = () => r([]); }); }
 async function dbPut(rec) { try { const d = await idb(); return await new Promise(r => { const t = d.transaction("lib", "readwrite"); t.objectStore("lib").put(rec); t.oncomplete = r; t.onerror = r; }); } catch {} }
@@ -782,7 +810,7 @@ async function importUrl(u) {
       : e.http ? `El servidor respondió HTTP ${e.http} para ${u}`
       : e.cors ? "No pude descargar " + u + ": el sitio no permite acceso desde el navegador (CORS) o no hay conexión. Puedes activar «proxy» en 📚 Permanente (un tercero verá la URL) o descargar el archivo y abrirlo con 📂."
       : "No pude importar " + u + ": " + (e.message || e);
-    msg("bt er", t, true);
+    msg("bt er", esc(t), true);
   } finally { setSt(readyTxt || "", readyTxt ? "ok" : ""); }
 }
 function copyToProject(key) {
@@ -810,7 +838,7 @@ renderPerm();
   renderPerm(); meter();
 })();
 
-/* ============ Persistencia y offline ============ */
+/* ============ Persistencia / offline ============ */
 try { navigator.storage?.persist?.(); } catch {}
 if (location.protocol.startsWith("http") && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
