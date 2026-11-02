@@ -75,6 +75,15 @@ nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
 #pv{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;flex-direction:column;z-index:9}
 #pv.on{display:flex}#pv .bar{padding:8px;background:var(--p);display:flex;gap:8px;align-items:center}
 #pv iframe{flex:1;border:0;background:#fff}
+#mm{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;z-index:10}
+#perm{flex:none;overflow-y:auto;max-height:30%;border-top:1px solid var(--b)}
+#perm .f button{min-height:0;padding:2px 8px}
+#perm .ph label{display:flex;gap:4px;align-items:center;text-transform:none;letter-spacing:0}
+#mm.on{display:flex}
+#mm .bar{padding:10px;padding-top:max(10px,env(safe-area-inset-top));background:var(--p);display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--b)}
+#mml{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px}
+.mr{border:1px solid var(--b);border-radius:10px;padding:8px;background:var(--p);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.mr b{flex:1;min-width:150px;font-weight:600}
 .badge{background:var(--er);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:4px}
 </style>
 </head>
@@ -84,6 +93,7 @@ nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
   <h1>⌨️ Metatron AI</h1>
   <select id="model"></select>
   <button id="load" class="pri">Cargar</button>
+  <button id="bmm" title="Modelos descargados">📦</button>
   <button id="bcfg">⚙️</button>
 </header>
 <div id="bar"><i></i></div>
@@ -97,6 +107,7 @@ nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
     <label>Temperatura <input type="number" id="temp" min="0" max="1.5" step="0.1" value="0.1"></label>
     <label>Máx. tokens respuesta <input type="number" id="maxt" min="128" max="3072" step="64" value="1024"></label>
     <label>Continuar solo (veces) <input type="number" id="auto" min="0" max="100" value="12"></label>
+    <label>Mejora automática (rondas) <input type="number" id="imp" min="0" max="10" value="0"></label>
     <label>Top-p <input type="number" id="topp" min="0.1" max="1" step="0.05" value="0.9"></label>
   </div>
   <button id="rsys">Restaurar instrucciones por defecto</button>
@@ -120,6 +131,7 @@ nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
       <button id="bdl" title="Descargar / compartir archivo">⬇</button>
     </div>
     <div id="tree"></div>
+    <div id="perm"></div>
     <textarea id="ed" class="mono" spellcheck="false" placeholder="Selecciona un archivo para verlo/editarlo"></textarea>
     <input type="file" id="fin" multiple hidden>
     <input type="file" id="din" webkitdirectory multiple hidden>
@@ -159,6 +171,8 @@ nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
     <div id="eds"><div class="hint">Aquí aparecerán los cambios que proponga la IA. Revísalos y aplícalos.</div></div>
   </section>
 </div>
+
+<div id="mm"><div class="bar"><b style="margin-right:auto">📦 Modelos guardados en este dispositivo</b><button id="mmx">Cerrar</button></div><div id="mml"></div></div>
 
 <div id="pv"><div class="bar"><b style="margin-right:auto">Vista previa</b><button id="pvx">Cerrar</button></div><iframe id="fr" sandbox="allow-scripts allow-forms allow-modals"></iframe></div>
 
@@ -244,6 +258,9 @@ $("bcfg").onclick = () => $("cfg").classList.toggle("on");
 /* ============ Estado ============ */
 const ws = new Map(), orig = new Map(), inc = new Set();
 let sel = null, edits = [], undo = [], dirH = null, engine = null, busy = false, ctxTok = 4096, prev = null;
+let applied = [], impLeft = 0;
+const LIB = new Map(); // apartado permanente (guardado en IndexedDB)
+const getF = p => ws.has(p) ? ws.get(p) : (LIB.get(p)?.text ?? null);
 const IGN = new Set(["node_modules", ".git", "dist", "build", "__pycache__", "Library", "Temp", "obj"]);
 const persist = () => { try { localStorage.setItem("cx_ws", JSON.stringify([...ws])); } catch {} };
 try { for (const [k, v] of JSON.parse(localStorage.getItem("cx_ws") || "[]")) { ws.set(k, v); orig.set(k, v); if (inc.size < 4) inc.add(k); } } catch {}
@@ -262,6 +279,7 @@ $("nav").onclick = e => { if (e.target.dataset?.p) tab(e.target.dataset.p); };
 const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 function tree() {
   const t = $("tree");
+  $("ed").readOnly = !ws.has(sel);
   if (!ws.size) { t.innerHTML = '<div class="hint" style="padding:14px">Abre archivos o una carpeta, o crea uno nuevo.</div>'; meter(); return; }
   t.innerHTML = [...ws.keys()].sort().map(p => {
     const mod = !orig.has(p) || orig.get(p) !== ws.get(p);
@@ -316,8 +334,8 @@ const est = s => Math.ceil(s.length / 3.2);
 function ctxText(budgetChars) {
   let out = "", cut = false;
   for (const p of inc) {
-    if (!ws.has(p)) continue;
-    let c = ws.get(p), blk = `=== ${p} ===\n${c}\n=== FIN ===\n`;
+    if (getF(p) == null) continue;
+    let c = getF(p), blk = `=== ${p} ===\n${c}\n=== FIN ===\n`;
     if (out.length + blk.length > budgetChars) {
       const room = budgetChars - out.length - p.length - 40;
       if (room < 200) { cut = true; continue; }
@@ -333,7 +351,7 @@ function budget() {
   return Math.max(0, Math.floor(total * 3.2));
 }
 function meter() {
-  const used = [...inc].reduce((n, p) => n + (ws.get(p)?.length || 0), 0), b = budget(), m = $("meter");
+  const used = [...inc].reduce((n, p) => n + (getF(p)?.length || 0), 0), b = budget(), m = $("meter");
   m.textContent = `Contexto: ~${est("x".repeat(used))} tok de archivos · caben ~${est("x".repeat(b))} (ventana ${ctxTok})`;
   m.className = used > b ? "e" : used > b * .8 ? "w" : "";
   if (used > b) m.textContent += " · se truncará: marca menos archivos";
@@ -409,6 +427,7 @@ $("load").onclick = async () => {
   if (busy) return; const v = $("model").value, kind = v.slice(0, 3), id = v.slice(4);
   if (!v) return;
   busy = true; $("load").disabled = true; $("send").disabled = true; $("bar").style.display = "block"; bar(0); setSt("Preparando…", "load");
+  localStorage.setItem("cx_loading", v);
   try {
     if (engine) { try { await engine.unload(); } catch {} engine = null; }
     engine = kind === "gpu" ? await mkGPU(id) : await mkCPU(id);
@@ -416,7 +435,7 @@ $("load").onclick = async () => {
     readyTxt = "Metatron AI listo · " + id.split("/").pop().replace("-MLC", "") + (kind === "cpu" ? " (CPU)" : " (GPU)");
     setSt(readyTxt, "ok"); $("send").disabled = false; meter();
   } catch (e) { console.error(e); engine = null; setSt("Error al cargar: " + (e.message || e) + (kind === "gpu" ? " · prueba un modelo más pequeño" : ""), "er"); }
-  finally { busy = false; $("load").disabled = false; setTimeout(() => $("bar").style.display = "none", 600); }
+  finally { localStorage.removeItem("cx_loading"); busy = false; $("load").disabled = false; setTimeout(() => $("bar").style.display = "none", 600); refreshCache(); }
 };
 
 /* ============ Parser y aplicación de edits ============ */
@@ -438,14 +457,18 @@ function findLines(cur, s) {
   return null;
 }
 function applyOne(e) {
-  if (!e.search.trim()) { ws.set(e.path, e.rep); inc.add(e.path); e.st = "ok"; return true; }
+  if (!e.search.trim()) { ws.set(e.path, e.rep); inc.add(e.path); e.st = "ok"; applied.push(e.path); return true; }
   if (!ws.has(e.path)) { e.st = "fail"; e.why = "archivo no existe"; return false; }
   const cur = ws.get(e.path), r = findLines(cur, e.search);
   if (!r) { e.st = "fail"; e.why = "no se encontró el texto a reemplazar"; return false; }
-  ws.set(e.path, cur.slice(0, r[0]) + e.rep + cur.slice(r[1])); e.st = "ok"; return true;
+  ws.set(e.path, cur.slice(0, r[0]) + e.rep + cur.slice(r[1])); e.st = "ok"; applied.push(e.path); return true;
 }
 const snap = () => undo.push(new Map(ws));
-function after() { persist(); if (sel && ws.has(sel)) $("ed").value = ws.get(sel); tree(); renderEdits(); }
+function after(sug = true) {
+  persist(); if (sel && ws.has(sel)) $("ed").value = ws.get(sel); tree(); renderEdits();
+  if (sug && applied.length) suggest(applied[0]);
+  applied = [];
+}
 function renderEdits() {
   const b = $("eds"), pend = edits.filter(e => e.st === "pend").length;
   $("nb").style.display = pend ? "" : "none"; $("nb").textContent = pend;
@@ -473,8 +496,10 @@ async function run() {
   const task = $("inp").value.trim(); if (!engine || busy || !task) return;
   busy = true; $("send").style.display = "none"; $("stop").style.display = ""; $("inp").value = ""; $("inp").style.height = "";
   const mode = $("mode").value, sys = IDENT + $("sys").value + MODE[mode];
-  const { out: ctx, cut } = ctxText(budget());
   msg("u", task, true); logPush("u", task);
+  const urls = [...new Set(task.match(/https?:\/\/[^\s)>"']+/g) || [])].slice(0, 3);
+  for (const u of urls) await importUrl(u);
+  const { out: ctx, cut } = ctxText(budget());
   if (cut) msg("bt er", "⚠ Algunos archivos se truncaron u omitieron por el límite de contexto. Marca menos archivos o usa archivos más pequeños.", true);
   const el = msg("bt", "…"); let out = "", t0 = performance.now(), n = 0;
   const messages = [{ role: "system", content: sys }];
@@ -497,7 +522,17 @@ async function run() {
     el.insertAdjacentHTML("beforeend", `<div class="meta">${s}s · ~${(n / (s || 1)).toFixed(1)} tok/s</div>`);
     prev = { u: task.slice(0, 300), a: out }; logPush("bt", out);
     const found = parse(out);
-    if (found.length) { edits = found; renderEdits(); el.insertAdjacentHTML("beforeend", `<div class="meta">✔ ${found.length} cambio(s) propuesto(s) → pestaña Cambios</div>`); if (matchMedia("(max-width:899px)").matches) tab("pc"); }
+    if (found.length) {
+      edits = found; renderEdits();
+      el.insertAdjacentHTML("beforeend", `<div class="meta">✔ ${found.length} cambio(s) propuesto(s)</div>`);
+      if (impLeft > 0) {
+        snap(); found.forEach(applyOne);
+        const bad = found.some(x => x.st === "fail"), f = found[0].path;
+        applied = []; after(false);
+        if (bad) { impLeft = 0; msg("bt er", "Algún cambio no encajó: detuve la mejora automática. Revisa la pestaña Cambios.", true); }
+        else { impLeft--; if (impLeft > 0) setTimeout(() => improve(f, "mejorar"), 400); else msg("bt", "✔ Mejora automática terminada.", true); }
+      } else if (matchMedia("(max-width:899px)").matches) tab("pc");
+    } else impLeft = 0;
   } catch (e) {
     console.error(e); el.classList.add("er"); el.textContent = "Error: " + (e.message || e);
     if (/lost|device|memory|OOM|out of/i.test(String(e.message || e))) { engine = null; el.textContent += "\nPosible falta de memoria o el sistema suspendió la GPU (común en móvil al cambiar de app). Pulsa Cargar de nuevo o usa un modelo más pequeño."; setSt("Modelo descargado de memoria: pulsa Cargar", "er"); }
@@ -560,6 +595,220 @@ $("bsave").onclick = async () => {
 };
 
 tree(); renderEdits();
+
+/* ============ Gestor de modelos (descarga persistente) ============ */
+const ALL = () => [
+  ...(GPUOK ? GPU_MODELS.filter(([id]) => recs.has(id)).map(([id, n, gb]) => ["gpu:" + id, n, gb]) : []),
+  ...CPU_MODELS.map(([id, n, gb]) => ["cpu:" + id, n, gb])
+];
+const cached = new Set();
+async function isCached(v) {
+  const k = v.slice(0, 3), id = v.slice(4);
+  try {
+    if (k === "gpu") {
+      try { return await webllm.hasModelInCache(id); }
+      catch { const c = await caches.open("webllm/model"); return (await c.keys()).some(r => r.url.includes("/" + id + "/") && /params_shard/.test(r.url)); }
+    }
+    const c = await caches.open("transformers-cache");
+    return (await c.keys()).some(r => r.url.includes("/" + id + "/") && /\.onnx/.test(r.url));
+  } catch { return false; }
+}
+async function refreshCache() {
+  cached.clear();
+  for (const [v] of ALL()) if (await isCached(v)) cached.add(v);
+  for (const o of $("model").options) {
+    const base = o.dataset.base ?? (o.dataset.base = o.textContent);
+    o.textContent = (cached.has(o.value) ? "✔ " : "⬇ ") + base;
+  }
+}
+async function dl(v) {
+  if (busy) return;
+  const kind = v.slice(0, 3), id = v.slice(4), mx = $("maxt").value;
+  busy = true; $("load").disabled = true; $("send").disabled = true; $("bar").style.display = "block"; bar(0);
+  try {
+    if (engine) { try { await engine.unload(); } catch {} engine = null; readyTxt = ""; }
+    const e = kind === "gpu" ? await mkGPU(id) : await mkCPU(id);
+    try { await e.unload(); } catch {}
+    setSt("✔ Descargado y guardado: " + id.split("/").pop().replace("-MLC", "") + " · pulsa Cargar para usarlo", "ok");
+  } catch (e) { console.error(e); setSt("Error al descargar: " + (e.message || e), "er"); }
+  finally { $("maxt").value = mx; busy = false; $("load").disabled = false; $("bar").style.display = "none"; await refreshCache(); renderMM(); }
+}
+async function del(v) {
+  const k = v.slice(0, 3), id = v.slice(4);
+  try {
+    if (k === "gpu") await webllm.deleteModelAllInfoInCache(id);
+    else { const c = await caches.open("transformers-cache"); for (const r of await c.keys()) if (r.url.includes("/" + id + "/")) await c.delete(r); }
+  } catch (e) { alert("No se pudo borrar: " + e.message); }
+  await refreshCache(); renderMM();
+}
+async function renderMM() {
+  let st = "";
+  try {
+    const s = await navigator.storage.estimate(), p = await navigator.storage.persisted?.();
+    st = `Almacenamiento: ${(s.usage / 1e9).toFixed(2)} GB usados de ${(s.quota / 1e9).toFixed(1)} GB · protegido contra borrado: ${p ? "sí" : "no (el navegador podría limpiarlo)"}`;
+  } catch {}
+  $("mml").innerHTML = `<div class="meta">${st}</div>
+    <label class="meta"><input type="checkbox" id="autold" ${localStorage.getItem("cx_auto") !== "0" ? "checked" : ""}> Al abrir la página, cargar solo el último modelo si ya está descargado</label>
+    <button id="dall" class="pri">⬇ Descargar todos los compatibles con este equipo</button>` +
+    ALL().map(([v, n, gb]) => {
+      const c = cached.has(v), big = gb > CAP;
+      return `<div class="mr"><b>${c ? "✔" : "⬇"} ${esc(n)}</b>${big ? '<span class="tag">pesado para este equipo</span>' : c ? `<button data-use="${v}" class="ok">Usar</button><button data-del="${v}" class="er">Borrar</button>` : `<button data-dl="${v}" class="pri">Descargar</button>`}</div>`;
+    }).join("");
+}
+$("bmm").onclick = async () => { await refreshCache(); await renderMM(); $("mm").classList.add("on"); };
+$("mmx").onclick = () => $("mm").classList.remove("on");
+$("mml").addEventListener("change", e => { if (e.target.id === "autold") localStorage.setItem("cx_auto", e.target.checked ? "1" : "0"); });
+$("mml").addEventListener("click", async e => {
+  const t = e.target, d = t.dataset || {};
+  if (d.dl) await dl(d.dl);
+  else if (d.del) { if (confirm("¿Borrar este modelo del dispositivo?")) await del(d.del); }
+  else if (d.use) { $("model").value = d.use; $("mm").classList.remove("on"); $("load").click(); }
+  else if (t.id === "dall") { for (const [v, , gb] of ALL()) if (gb <= CAP && !cached.has(v)) await dl(v); }
+});
+
+/* ============ Mejora continua ============ */
+const IMP = {
+  mejorar: "Mejora este archivo: más claro, modular y optimizado, sin romper nada ni cambiar nombres existentes.",
+  optimizar: "Optimiza el rendimiento de este archivo sin cambiar su comportamiento.",
+  responsive: "Haz este archivo responsive y compatible con móvil (Android/iOS) y PC.",
+  errores: "Añade manejo de errores y validaciones donde falten.",
+  bugs: "Busca bugs o fallos de lógica en este archivo y corrígelos."
+};
+function improve(f, key = "mejorar") {
+  if (!engine) { setSt("Carga un modelo primero para poder mejorar el archivo", "er"); return; }
+  if (busy) return;
+  const o = [f, ...[...inc].filter(x => x !== f)]; inc.clear(); o.forEach(x => inc.add(x)); tree();
+  $("mode").value = "edit"; $("inp").value = `[${f}] ${IMP[key] || IMP.mejorar}`; run();
+}
+function suggest(f) {
+  const fa = esc(f).replace(/"/g, "&quot;");
+  msg("bt", `✔ Cambios aplicados en <b>${esc(f)}</b>. ¿Lo mejoro?<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">` +
+    [["mejorar", "✨ Mejorar"], ["optimizar", "⚡ Optimizar"], ["responsive", "📱 Responsive"], ["errores", "🛡 Errores"], ["bugs", "🐞 Bugs"], ["x3", "🔁 Mejorar ×3"]]
+      .map(([k, l]) => `<button data-imp="${k}" data-f="${fa}">${l}</button>`).join("") + "</div>");
+}
+$("chat").addEventListener("click", e => {
+  const k = e.target.dataset?.imp; if (!k) return;
+  const f = e.target.dataset.f;
+  if (k === "x3") { impLeft = 3; improve(f, "mejorar"); } else { impLeft = +$("imp").value || 0; improve(f, k); }
+});
+
+/* ============ Arranque: reanudar y cargar desde caché ============ */
+(async () => {
+  await refreshCache();
+  const crashed = localStorage.getItem("cx_loading");
+  if (crashed) { localStorage.removeItem("cx_loading"); setSt("La carga anterior se interrumpió (probable falta de memoria). Elige un modelo más pequeño y pulsa Cargar.", "er"); return; }
+  const v = $("model").value;
+  if (!v) return;
+  if (cached.has(v)) {
+    if (localStorage.getItem("cx_auto") !== "0") { setSt("Modelo ya descargado · cargando desde el almacenamiento del dispositivo…", "load"); $("load").click(); }
+    else setSt("✔ Modelo ya descargado: pulsa Cargar", "ok");
+  } else setSt("Aún no descargado: pulsa Cargar. Se guarda y no se vuelve a bajar (si se corta, continúa donde quedó).", "");
+})();
+
+/* ============ URL → apartado permanente ============ */
+const ea = s => esc(String(s)).replace(/"/g, "&quot;");
+const idb = () => new Promise((res, rej) => { const q = indexedDB.open("metatron", 1); q.onupgradeneeded = () => q.result.createObjectStore("lib", { keyPath: "key" }); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+async function dbAll() { const d = await idb(); return new Promise(r => { const q = d.transaction("lib").objectStore("lib").getAll(); q.onsuccess = () => r(q.result); q.onerror = () => r([]); }); }
+async function dbPut(rec) { try { const d = await idb(); return await new Promise(r => { const t = d.transaction("lib", "readwrite"); t.objectStore("lib").put(rec); t.oncomplete = r; t.onerror = r; }); } catch {} }
+async function dbDel(key) { try { const d = await idb(); return await new Promise(r => { const t = d.transaction("lib", "readwrite"); t.objectStore("lib").delete(key); t.oncomplete = r; t.onerror = r; }); } catch {} }
+const savePinc = () => { try { localStorage.setItem("cx_pinc", JSON.stringify([...inc].filter(k => k.startsWith("perm/")))); } catch {} };
+
+function renderPerm() {
+  const keys = [...LIB.keys()].sort();
+  $("perm").innerHTML = `<div class="ph"><b>📚 Permanente (${keys.length})</b><label class="meta" title="Si el sitio bloquea la descarga (CORS), usa un proxy público. Un tercero verá la URL."><input type="checkbox" id="pxy" ${localStorage.getItem("cx_proxy") === "1" ? "checked" : ""}> proxy</label><button id="purl">🔗 Importar URL</button></div>` +
+    keys.map(k => `<div class="f" data-pk="${ea(k)}"><input type="checkbox" data-pc="${ea(k)}" ${inc.has(k) ? "checked" : ""}><span title="${ea(LIB.get(k).url)}">${esc(k.replace(/^perm\//, ""))}</span><button data-pj="${ea(k)}" title="Copiar al proyecto">→</button><button data-px="${ea(k)}" class="er" title="Quitar">✕</button></div>`).join("");
+}
+function normUrl(u) {
+  let m = u.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+?)(?:[?#].*)?$/);
+  if (m) return `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}/${m[4]}`;
+  m = u.match(/^https?:\/\/gist\.github\.com\/([^/]+)\/([0-9a-f]+)/);
+  if (m) return `https://gist.githubusercontent.com/${m[1]}/${m[2]}/raw`;
+  return u;
+}
+async function getText(u) {
+  const go = async url => { const r = await fetch(url); if (!r.ok) { const e = new Error("HTTP " + r.status); e.http = r.status; throw e; } return r.text(); };
+  try { return await go(u); }
+  catch (e) {
+    if (e.http) throw e;
+    if (localStorage.getItem("cx_proxy") === "1") return await go("https://api.allorigins.win/raw?url=" + encodeURIComponent(u));
+    const err = new Error("cors"); err.cors = true; throw err;
+  }
+}
+function deliver(key) {
+  const r = LIB.get(key), k = ea(key);
+  msg("bt", `✔ <b>${esc(key.replace(/^perm\//, ""))}</b> existe y quedó guardado en el apartado permanente (${(r.text.length / 1024).toFixed(1)} KB)<div class="meta">${esc(r.url)}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button data-v="${k}">👁 Ver</button><button data-j="${k}">→ Proyecto</button><button data-d="${k}">⬇ Descargar</button></div>`);
+}
+async function importRepo(o, r, branch, path) {
+  const ref = branch || "HEAD";
+  const res = await fetch(`https://api.github.com/repos/${o}/${r}/git/trees/${ref}?recursive=1`);
+  if (!res.ok) { const e = new Error("HTTP " + res.status); e.http = res.status; throw e; }
+  const j = await res.json();
+  const re = /\.(html?|css|js|mjs|ts|tsx|jsx|json|md|txt|py|cs|java|kt|swift|c|h|cpp|hpp|go|rs|rb|php|sh|ya?ml|toml|xml|sql|shader|cginc|hlsl|csproj|ini|cfg)$/i;
+  const files = (j.tree || []).filter(x => x.type === "blob" && (x.size || 0) <= 200000 && re.test(x.path) && (!path || x.path.startsWith(path)) && !x.path.split("/").some(p => IGN.has(p))).slice(0, 80);
+  if (!files.length) throw new Error("No encontré archivos de texto en ese repositorio.");
+  let n = 0;
+  for (let i = 0; i < files.length; i += 4) {
+    await Promise.all(files.slice(i, i + 4).map(async f => {
+      try {
+        const t = await (await fetch(`https://raw.githubusercontent.com/${o}/${r}/${ref}/${f.path}`)).text();
+        const key = `perm/${r}/${f.path}`, rec = { key, url: `https://github.com/${o}/${r}/blob/${ref}/${f.path}`, text: t, added: Date.now() };
+        LIB.set(key, rec); await dbPut(rec); n++;
+      } catch {}
+    }));
+    setSt(`Importando repositorio… ${Math.min(i + 4, files.length)}/${files.length}`, "load");
+  }
+  renderPerm(); meter();
+  msg("bt", `✔ Repositorio <b>${esc(o + "/" + r)}</b> existe y se guardó en el apartado permanente: ${n} archivo(s). Márcalos con ☑ para usarlos como contexto o cópialos al proyecto con →.`);
+}
+async function importUrl(u) {
+  u = u.replace(/[.,;]+$/, "");
+  setSt("Comprobando y descargando " + u + "…", "load");
+  try {
+    const gh = u.match(/^https?:\/\/github\.com\/([^/]+)\/([^/#?]+?)(?:\.git)?(?:\/tree\/([^/]+)(?:\/([^#?]*))?)?\/?(?:[#?].*)?$/);
+    if (gh) await importRepo(gh[1], gh[2], gh[3], gh[4]);
+    else {
+      const url = normUrl(u), text = await getText(url);
+      if (text.length > 400000) throw new Error("El archivo es demasiado grande (máx. ~400 KB).");
+      const pu = new URL(url);
+      let name = decodeURIComponent(pu.pathname.split("/").filter(Boolean).pop() || pu.hostname);
+      if (!/\.[a-z0-9]{1,8}$/i.test(name)) name += /^\s*<(!doctype|html)/i.test(text) ? ".html" : ".txt";
+      let key = "perm/" + name;
+      if (LIB.has(key) && LIB.get(key).url !== u) key = "perm/" + pu.hostname + "_" + name;
+      const rec = { key, url: u, text, added: Date.now() };
+      LIB.set(key, rec); await dbPut(rec); inc.add(key); savePinc(); renderPerm(); meter(); deliver(key);
+    }
+  } catch (e) {
+    const t = e.http === 404 ? "La URL no existe (404): " + u
+      : e.http ? `El servidor respondió HTTP ${e.http} para ${u}`
+      : e.cors ? "No pude descargar " + u + ": el sitio no permite acceso desde el navegador (CORS) o no hay conexión. Puedes activar «proxy» en 📚 Permanente (un tercero verá la URL) o descargar el archivo y abrirlo con 📂."
+      : "No pude importar " + u + ": " + (e.message || e);
+    msg("bt er", t, true);
+  } finally { setSt(readyTxt || "", readyTxt ? "ok" : ""); }
+}
+function copyToProject(key) {
+  const name = key.replace(/^perm\//, ""); ws.set(name, LIB.get(key).text); inc.add(name); sel = name; $("ed").value = ws.get(name); persist(); tree();
+}
+function viewPerm(key) { sel = null; tab("pf"); tree(); $("ed").value = LIB.get(key).text; }
+$("perm").addEventListener("click", e => {
+  const t = e.target, d = t.dataset || {};
+  if (t.id === "purl") { const u = prompt("Pega la URL (archivo, página o repositorio de GitHub):"); if (u && u.trim()) importUrl(u.trim()); return; }
+  if (d.pc !== undefined) { t.checked ? inc.add(d.pc) : inc.delete(d.pc); savePinc(); meter(); return; }
+  if (d.pj) { copyToProject(d.pj); return; }
+  if (d.px) { if (confirm("¿Quitar del apartado permanente?")) { LIB.delete(d.px); inc.delete(d.px); dbDel(d.px); savePinc(); renderPerm(); meter(); } return; }
+  const row = t.closest(".f"); if (row?.dataset.pk) viewPerm(row.dataset.pk);
+});
+$("perm").addEventListener("change", e => { if (e.target.id === "pxy") localStorage.setItem("cx_proxy", e.target.checked ? "1" : "0"); });
+$("chat").addEventListener("click", e => {
+  const d = e.target.dataset || {}, k = d.v || d.j || d.d; if (!k || !LIB.has(k)) return;
+  if (d.v) viewPerm(k); else if (d.j) copyToProject(k);
+  else saveFile(new File([LIB.get(k).text], k.split("/").pop(), { type: "text/plain" }));
+});
+renderPerm();
+(async () => {
+  try { (await dbAll()).forEach(r => LIB.set(r.key, r)); } catch {}
+  try { JSON.parse(localStorage.getItem("cx_pinc") || "[]").forEach(k => { if (LIB.has(k)) inc.add(k); }); } catch {}
+  renderPerm(); meter();
+})();
 
 /* ============ Persistencia y offline ============ */
 try { navigator.storage?.persist?.(); } catch {}
