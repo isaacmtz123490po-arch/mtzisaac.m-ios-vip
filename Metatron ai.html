@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Metatron AI">
+<title>Metatron AI</title>
+<style>
+:root{--bg:#0d0f14;--p:#151922;--p2:#1d2330;--b:#262d3d;--t:#e6e8ee;--m:#8b93a7;--a:#6c8cff;--ok:#3ecf8e;--er:#ff6b6b;--wa:#f5b942}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--t);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column;overflow:hidden;height:100dvh;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+select,button,input,textarea{font:inherit;color:var(--t)}
+select,input[type=number],input[type=text]{background:var(--p2);border:1px solid var(--b);border-radius:8px;padding:6px 8px;max-width:100%}
+button{background:var(--p2);border:1px solid var(--b);border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--a)}button:disabled{opacity:.45;cursor:not-allowed}
+button.pri{background:var(--a);border-color:var(--a);color:#fff;font-weight:600}
+button.ok{border-color:var(--ok);color:var(--ok)}button.er{border-color:var(--er);color:var(--er)}
+code,pre,textarea.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px}
+header{display:flex;gap:6px;align-items:center;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top));background:var(--p);border-bottom:1px solid var(--b);flex-wrap:wrap}
+header h1{font-size:15px;margin-right:auto}
+#st{display:flex;gap:8px;align-items:center;padding:4px 10px;font-size:12px;color:var(--m);background:var(--p);border-bottom:1px solid var(--b)}
+#dot{width:8px;height:8px;border-radius:50%;background:var(--m);flex:none}
+#dot.ok{background:var(--ok)}#dot.er{background:var(--er)}#dot.load{background:var(--a);animation:p 1s infinite}
+@keyframes p{50%{opacity:.3}}
+#bar{height:3px;background:var(--b);display:none}#bar i{display:block;height:100%;width:0;background:var(--a)}
+#cfg{display:none;padding:8px 10px;background:var(--p);border-bottom:1px solid var(--b);gap:8px;flex-direction:column}
+#cfg.on{display:flex}
+#cfg label{font-size:12px;color:var(--m);display:flex;flex-direction:column;gap:3px}
+#cfg textarea{background:var(--p2);border:1px solid var(--b);border-radius:8px;padding:8px;min-height:110px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row label{flex:1;min-width:110px}
+nav{display:flex;background:var(--p);border-bottom:1px solid var(--b)}
+nav button{flex:1;border:0;border-radius:0;background:transparent;padding:9px}
+nav button.on{border-bottom:2px solid var(--a);color:var(--a)}
+#app{flex:1;min-height:0;display:flex}
+.pn{display:none;flex-direction:column;min-height:0;min-width:0;flex:1}
+.pn.on{display:flex}
+.ph{padding:6px 10px;font-size:12px;color:var(--m);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--b);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ph b{margin-right:auto}
+@media(max-width:899px){select,input,textarea,button{font-size:16px}textarea.mono,#inp{font-size:16px}button{min-height:40px}.f{padding:10px}#tools button{flex:1}}
+@media(min-width:900px){nav{display:none}#app{display:grid;grid-template-columns:270px 1fr 380px}.pn{display:flex;border-right:1px solid var(--b)}}
+#tools{padding:6px 8px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--b)}
+#tree{overflow-y:auto;flex:0 1 40%;min-height:70px}
+.f{display:flex;gap:6px;align-items:center;padding:4px 10px;cursor:pointer;border-left:3px solid transparent}
+.f:hover{background:var(--p2)}.f.sel{background:var(--p2);border-left-color:var(--a)}
+.f span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.f em{color:var(--wa);font-style:normal}
+#ed{flex:1;min-height:90px;background:#0a0c10;border:0;border-top:1px solid var(--b);padding:8px;resize:none;white-space:pre;overflow:auto}
+#chat{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:96%;padding:8px 12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.u{align-self:flex-end;background:var(--a);color:#fff}
+.bt{align-self:flex-start;background:var(--p);border:1px solid var(--b)}
+.bt.er{border-color:var(--er);color:var(--er)}
+.bt pre{background:#0a0c10;border:1px solid var(--b);border-radius:8px;padding:8px;margin:6px 0;overflow-x:auto;white-space:pre}
+.bt :not(pre)>code{background:#0a0c10;padding:1px 4px;border-radius:4px}
+.meta{font-size:11px;color:var(--m);margin-top:4px}
+.hint{margin:auto;text-align:center;color:var(--m);max-width:380px}
+#meter{font-size:11px;color:var(--m);padding:3px 10px}#meter.w{color:var(--wa)}#meter.e{color:var(--er)}
+#box{display:flex;gap:6px;padding:8px;border-top:1px solid var(--b);background:var(--p);align-items:flex-end;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+#inp{flex:1;background:var(--p2);border:1px solid var(--b);border-radius:10px;padding:8px 10px;resize:none;min-height:42px;max-height:150px}
+#inp:focus{outline:none;border-color:var(--a)}
+#eds{flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px}
+.ed{border:1px solid var(--b);border-radius:10px;background:var(--p);overflow:hidden}
+.ed header{padding:6px 8px;border:0;border-bottom:1px solid var(--b);gap:6px}
+.ed header b{font-size:12px;word-break:break-all;margin-right:auto}
+.tag{font-size:11px;padding:1px 6px;border-radius:6px;border:1px solid var(--m);color:var(--m)}
+.tag.ok{color:var(--ok);border-color:var(--ok)}.tag.er{color:var(--er);border-color:var(--er)}
+.df{margin:0;padding:6px 0;overflow-x:auto;max-height:260px;overflow-y:auto}
+.df div{padding:0 8px;white-space:pre}
+.df .d{background:rgba(255,107,107,.14);color:#ffb3b3}.df .a{background:rgba(62,207,142,.14);color:#a8f0cf}
+#pv{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;flex-direction:column;z-index:9}
+#pv.on{display:flex}#pv .bar{padding:8px;background:var(--p);display:flex;gap:8px;align-items:center}
+#pv iframe{flex:1;border:0;background:#fff}
+.badge{background:var(--er);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⌨️ Metatron AI</h1>
+  <select id="model"></select>
+  <button id="load" class="pri">Cargar</button>
+  <button id="bcfg">⚙️</button>
+</header>
+<div id="bar"><i></i></div>
+<div id="st"><span id="dot"></span><span id="stxt">Sin modelo cargado</span></div>
+
+<section id="cfg">
+  <label>Instrucciones del agente (editable)
+    <textarea id="sys" class="mono"></textarea>
+  </label>
+  <div class="row">
+    <label>Temperatura <input type="number" id="temp" min="0" max="1.5" step="0.1" value="0.1"></label>
+    <label>Máx. tokens respuesta <input type="number" id="maxt" min="128" max="3072" step="64" value="1024"></label>
+    <label>Continuar solo (veces) <input type="number" id="auto" min="0" max="100" value="12"></label>
+    <label>Top-p <input type="number" id="topp" min="0.1" max="1" step="0.05" value="0.9"></label>
+  </div>
+  <button id="rsys">Restaurar instrucciones por defecto</button>
+</section>
+
+<nav id="nav">
+  <button data-p="pf" class="on">Archivos</button>
+  <button data-p="pt">Tarea</button>
+  <button data-p="pc">Cambios<span id="nb" class="badge" style="display:none"></span></button>
+</nav>
+
+<div id="app">
+  <!-- ARCHIVOS -->
+  <section class="pn on" id="pf">
+    <div class="ph"><b>Proyecto</b></div>
+    <div id="tools">
+      <button id="bopen">📂 Archivos</button>
+      <button id="bdir">📁 Carpeta</button>
+      <button id="bnew">＋ Nuevo</button>
+      <button id="bdel">🗑</button>
+      <button id="bdl" title="Descargar / compartir archivo">⬇</button>
+    </div>
+    <div id="tree"></div>
+    <textarea id="ed" class="mono" spellcheck="false" placeholder="Selecciona un archivo para verlo/editarlo"></textarea>
+    <input type="file" id="fin" multiple hidden>
+    <input type="file" id="din" webkitdirectory multiple hidden>
+  </section>
+
+  <!-- TAREA -->
+  <section class="pn" id="pt">
+    <div class="ph"><b>Tarea</b>
+      <select id="mode">
+        <option value="edit">Editar código</option>
+        <option value="new">Crear proyecto/archivos</option>
+        <option value="debug">Depurar</option>
+        <option value="explain">Explicar</option>
+      </select>
+      <button id="bclr">Limpiar</button>
+    </div>
+    <div id="chat"></div>
+    <div id="meter"></div>
+    <div id="box">
+      <textarea id="inp" rows="1" placeholder="Describe la tarea… (marca ☑ los archivos que debe ver)"></textarea>
+      <button id="send" class="pri" disabled>Ejecutar</button>
+      <button id="stop" style="display:none">⏹</button>
+    </div>
+  </section>
+
+  <!-- CAMBIOS -->
+  <section class="pn" id="pc">
+    <div class="ph"><b>Cambios propuestos</b>
+      <button id="aall" class="ok">Aplicar todo</button>
+      <button id="bund">↩ Deshacer</button>
+    </div>
+    <div id="tools">
+      <button id="bprev">▶ Vista previa</button>
+      <button id="bzip">⬇ ZIP</button>
+      <button id="bsave" style="display:none">💾 Guardar en carpeta</button>
+    </div>
+    <div id="eds"><div class="hint">Aquí aparecerán los cambios que proponga la IA. Revísalos y aplícalos.</div></div>
+  </section>
+</div>
+
+<div id="pv"><div class="bar"><b style="margin-right:auto">Vista previa</b><button id="pvx">Cerrar</button></div><iframe id="fr" sandbox="allow-scripts allow-forms allow-modals"></iframe></div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+
+/* ============ Dispositivo ============ */
+const UA = navigator.userAgent;
+const IOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const MOBILE = IOS || /Android/i.test(UA);
+let hasGPU = false;
+try { hasGPU = !!navigator.gpu && !!(await navigator.gpu.requestAdapter()); } catch {}
+let webllm = null;
+if (hasGPU) { try { webllm = await import("https://esm.run/@mlc-ai/web-llm"); } catch (e) { console.warn("WebLLM no cargó", e); } }
+
+/* ============ Modelos ============ */
+const RAM = navigator.deviceMemory || (IOS ? 4 : 8);
+const CAP = !MOBILE ? 99 : IOS ? 3 : RAM >= 8 ? 5 : RAM >= 6 ? 3 : 1; // GB máx. recomendado
+const GPU_MODELS = [
+  ["Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC", "Coder 0.5B (~0.5 GB) · móvil básico", 1],
+  ["Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC", "Coder 1.5B (~1.6 GB) · móvil recomendado", 3],
+  ["Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC", "Coder 3B (~2.5 GB) · equilibrado", 5],
+  ["Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC", "Coder 7B (~5 GB) · mejor calidad", 9],
+  ["Llama-3.2-3B-Instruct-q4f16_1-MLC", "Llama 3.2 3B (~2.3 GB) · general", 5],
+];
+const CPU_MODELS = [
+  ["onnx-community/Qwen2.5-Coder-0.5B-Instruct", "Coder 0.5B · CPU (lento)", 1],
+  ["onnx-community/Qwen2.5-0.5B-Instruct", "Qwen2.5 0.5B general · CPU (lento)", 1],
+];
+const recs = new Map((webllm?.prebuiltAppConfig.model_list || []).map(m => [m.model_id, m]));
+const grp = (label, list, pre) => `<optgroup label="${label}">` + list.filter(([id]) => pre === "cpu" || recs.has(id)).map(([id, n, gb]) => `<option value="${pre}:${id}"${gb > CAP ? " disabled" : ""}>${n}${gb > CAP ? " · pesado para este equipo" : ""}</option>`).join("") + `</optgroup>`;
+const GPUOK = hasGPU && !!webllm;
+$("model").innerHTML = (GPUOK ? grp("GPU (WebGPU) · rápido", GPU_MODELS, "gpu") : "") + grp("CPU · compatible con todo", CPU_MODELS, "cpu");
+{
+  const opt = v => [...$("model").options].find(o => o.value === v && !o.disabled);
+  const def = GPUOK ? (MOBILE ? "gpu:Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC" : "gpu:Qwen2.5-Coder-3B-Instruct-q4f16_1-MLC") : "cpu:onnx-community/Qwen2.5-Coder-0.5B-Instruct";
+  const pick = opt(localStorage.getItem("cx_model2")) || opt(def) || [...$("model").options].find(o => !o.disabled);
+  if (pick) $("model").value = pick.value;
+}
+
+/* ============ Prompt del agente ============ */
+const IDENT = "Tu nombre es Metatron AI. SIEMPRE te llamas y te presentas como Metatron AI; nunca digas que eres Qwen, Llama u otro modelo, ni menciones a sus creadores.\n";
+const SYS_DEF = `Eres Metatron AI, un agente de programación local, estilo Codex. Stack del usuario: HTML estricto con CSS/JS, Unity C# para móviles, Python para automatización.
+Recibes ARCHIVOS del proyecto y una TAREA. Respuestas directas, sin rodeos.
+REGLAS:
+- Analiza estructura, nombres de variables y lógica existentes. NO reescribas archivos completos; cambia lo mínimo necesario.
+- Primero 1-3 líneas explicando qué cambias y por qué.
+- Después, cada cambio con este formato EXACTO (el texto de BUSCAR debe copiarse idéntico del archivo, con 2-4 líneas de contexto):
+FILE: ruta/archivo.ext
+<<<<<<< SEARCH
+(líneas originales exactas)
+=======
+(líneas nuevas)
+>>>>>>> REPLACE
+- Para crear un archivo nuevo deja SEARCH vacío:
+FILE: nuevo.js
+<<<<<<< SEARCH
+=======
+(contenido completo)
+>>>>>>> REPLACE
+- Varios cambios = varios bloques. No inventes archivos ni APIs. Si falta información, asume lo razonable y dilo en una línea.
+- HTML semántico, moderno y responsive; código limpio, modular y optimizado.
+- Responde en español.
+EJEMPLO:
+Cambio el color del botón a verde.
+FILE: index.html
+<<<<<<< SEARCH
+.btn { color: red; }
+=======
+.btn { color: green; }
+>>>>>>> REPLACE`;
+const MODE = {
+  edit: "\nMODO: editar el código existente con bloques SEARCH/REPLACE.",
+  new: "\nMODO: crear los archivos necesarios; cada archivo nuevo con SEARCH vacío y contenido completo.",
+  debug: "\nMODO: depurar. Da la causa raíz en 1-3 líneas y la corrección mínima con bloques SEARCH/REPLACE.",
+  explain: "\nMODO: solo explicar el código de forma breve. NO generes bloques SEARCH/REPLACE."
+};
+$("sys").value = localStorage.getItem("cx_sys") || SYS_DEF;
+$("sys").oninput = () => localStorage.setItem("cx_sys", $("sys").value);
+$("rsys").onclick = () => { $("sys").value = SYS_DEF; localStorage.setItem("cx_sys", SYS_DEF); };
+$("bcfg").onclick = () => $("cfg").classList.toggle("on");
+
+/* ============ Estado ============ */
+const ws = new Map(), orig = new Map(), inc = new Set();
+let sel = null, edits = [], undo = [], dirH = null, engine = null, busy = false, ctxTok = 4096, prev = null;
+const IGN = new Set(["node_modules", ".git", "dist", "build", "__pycache__", "Library", "Temp", "obj"]);
+const persist = () => { try { localStorage.setItem("cx_ws", JSON.stringify([...ws])); } catch {} };
+try { for (const [k, v] of JSON.parse(localStorage.getItem("cx_ws") || "[]")) { ws.set(k, v); orig.set(k, v); if (inc.size < 4) inc.add(k); } } catch {}
+
+const setSt = (t, c = "") => { $("stxt").textContent = t; $("dot").className = c; };
+if (!GPUOK) setSt("Sin WebGPU en este navegador: se usará modo CPU (más lento). Para GPU usa Chrome/Edge actual o Safari de iOS/macOS 26+", "");
+
+/* ============ Pestañas (móvil) ============ */
+function tab(id) {
+  document.querySelectorAll(".pn").forEach(p => p.classList.toggle("on", p.id === id));
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.p === id));
+}
+$("nav").onclick = e => { if (e.target.dataset?.p) tab(e.target.dataset.p); };
+
+/* ============ Archivos ============ */
+const esc = s => s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+function tree() {
+  const t = $("tree");
+  if (!ws.size) { t.innerHTML = '<div class="hint" style="padding:14px">Abre archivos o una carpeta, o crea uno nuevo.</div>'; meter(); return; }
+  t.innerHTML = [...ws.keys()].sort().map(p => {
+    const mod = !orig.has(p) || orig.get(p) !== ws.get(p);
+    return `<div class="f${p === sel ? " sel" : ""}" data-p="${esc(p)}"><input type="checkbox" ${inc.has(p) ? "checked" : ""} data-c="${esc(p)}"><span title="${esc(p)}">${esc(p)}</span>${mod ? "<em>●</em>" : ""}</div>`;
+  }).join("");
+  meter();
+}
+$("tree").onclick = e => {
+  const c = e.target.dataset?.c;
+  if (c !== undefined) { e.target.checked ? inc.add(c) : inc.delete(c); meter(); return; }
+  const f = e.target.closest(".f"); if (!f) return;
+  sel = f.dataset.p; $("ed").value = ws.get(sel); tree();
+};
+$("ed").oninput = () => { if (sel) { ws.set(sel, $("ed").value); persist(); meter(); } };
+async function addFile(path, file) {
+  if (file.size > 300000) return;
+  const txt = await file.text(); if (txt.includes("\u0000")) return;
+  ws.set(path, txt); orig.set(path, txt); if (inc.size < 4) inc.add(path);
+}
+$("bopen").onclick = () => $("fin").click();
+$("fin").onchange = async e => { for (const f of e.target.files) await addFile(f.name, f); e.target.value = ""; persist(); tree(); };
+$("din").onchange = async e => {
+  for (const f of e.target.files) {
+    const p = f.webkitRelativePath || f.name; if (p.split("/").some(x => IGN.has(x))) continue;
+    await addFile(p, f);
+  }
+  e.target.value = ""; persist(); tree();
+};
+async function walk(dh, pre = "") {
+  for await (const [n, h] of dh.entries()) {
+    if (IGN.has(n) || n === ".git") continue;
+    if (h.kind === "directory") await walk(h, pre + n + "/"); else await addFile(pre + n, await h.getFile());
+  }
+}
+$("bdir").onclick = async () => {
+  if (window.showDirectoryPicker) {
+    try { dirH = await showDirectoryPicker({ mode: "readwrite" }); ws.clear(); orig.clear(); inc.clear(); await walk(dirH); $("bsave").style.display = ""; persist(); tree(); }
+    catch (e) { if (e.name !== "AbortError") alert("No se pudo abrir: " + e.message); }
+  } else $("din").click();
+};
+$("bnew").onclick = () => {
+  const n = prompt("Nombre del archivo (ej. index.html, js/app.js):"); if (!n) return;
+  if (!ws.has(n)) { ws.set(n, ""); inc.add(n); } sel = n; $("ed").value = ws.get(n); persist(); tree();
+};
+$("bdel").onclick = () => {
+  if (!sel || !confirm("¿Quitar " + sel + " del proyecto? (no borra nada de tu disco)")) return;
+  ws.delete(sel); orig.delete(sel); inc.delete(sel); sel = null; $("ed").value = ""; persist(); tree();
+};
+
+/* ============ Contexto / presupuesto ============ */
+const est = s => Math.ceil(s.length / 3.2);
+function ctxText(budgetChars) {
+  let out = "", cut = false;
+  for (const p of inc) {
+    if (!ws.has(p)) continue;
+    let c = ws.get(p), blk = `=== ${p} ===\n${c}\n=== FIN ===\n`;
+    if (out.length + blk.length > budgetChars) {
+      const room = budgetChars - out.length - p.length - 40;
+      if (room < 200) { cut = true; continue; }
+      blk = `=== ${p} (TRUNCADO) ===\n${c.slice(0, room)}\n=== FIN ===\n`; cut = true;
+    }
+    out += blk;
+  }
+  return { out, cut };
+}
+function budget() {
+  const sys = IDENT + $("sys").value + MODE[$("mode").value];
+  const total = ctxTok - est(sys) - (+$("maxt").value) - est($("inp").value) - 250;
+  return Math.max(0, Math.floor(total * 3.2));
+}
+function meter() {
+  const used = [...inc].reduce((n, p) => n + (ws.get(p)?.length || 0), 0), b = budget(), m = $("meter");
+  m.textContent = `Contexto: ~${est("x".repeat(used))} tok de archivos · caben ~${est("x".repeat(b))} (ventana ${ctxTok})`;
+  m.className = used > b ? "e" : used > b * .8 ? "w" : "";
+  if (used > b) m.textContent += " · se truncará: marca menos archivos";
+}
+$("inp").addEventListener("input", () => { const i = $("inp"); i.style.height = "auto"; i.style.height = Math.min(150, i.scrollHeight) + "px"; meter(); });
+$("mode").onchange = meter; $("maxt").onchange = meter;
+
+/* ============ Chat ============ */
+function md(t) {
+  return t.split(/```/).map((p, i) => i % 2
+    ? `<pre><code>${esc(p.slice(p.indexOf("\n") + 1).replace(/\n$/, ""))}</code></pre>`
+    : esc(p).replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")).join("");
+}
+function msg(cls, html, raw) {
+  const c = $("chat"); if (c.querySelector(".hint")) c.innerHTML = "";
+  const d = document.createElement("div"); d.className = "m " + cls;
+  raw ? d.textContent = html : d.innerHTML = html; c.appendChild(d); c.scrollTop = c.scrollHeight; return d;
+}
+function hint() { $("chat").innerHTML = '<div class="hint"><h3>Metatron AI</h3><p>1) Elige modelo y pulsa Cargar.<br>2) Abre tus archivos (pestaña Archivos) y marca ☑ los relevantes.<br>3) Escribe la tarea. Revisa y aplica los cambios en la pestaña Cambios.</p></div>'; }
+let LOG = []; try { LOG = JSON.parse(localStorage.getItem("cx_log") || "[]"); } catch {}
+const logSave = () => { try { localStorage.setItem("cx_log", JSON.stringify(LOG.slice(-60))); } catch {} };
+const logPush = (c, t) => { LOG.push({ c, t }); LOG = LOG.slice(-60); logSave(); };
+hint();
+if (LOG.length) {
+  $("chat").innerHTML = ""; LOG.forEach(x => msg(x.c, x.c === "u" ? x.t : md(x.t), x.c === "u"));
+  const lu = [...LOG].reverse().find(x => x.c === "u"), lb = [...LOG].reverse().find(x => x.c === "bt");
+  if (lu && lb) prev = { u: lu.t.slice(0, 300), a: lb.t };
+}
+$("bclr").onclick = () => { if (!busy) { prev = null; LOG = []; logSave(); hint(); } };
+
+/* ============ Cargar modelo ============ */
+let readyTxt = "", stopFlag = false;
+const bar = p => $("bar").firstElementChild.style.width = Math.round(p * 100) + "%";
+async function mkGPU(id) {
+  const e = await webllm.CreateMLCEngine(id, { initProgressCallback: r => { bar(r.progress || 0); setSt(r.text, "load"); } });
+  ctxTok = recs.get(id)?.overrides?.context_window_size || 4096;
+  return {
+    async gen(messages, o, onTok) {
+      const s = await e.chat.completions.create({ messages, stream: true, temperature: o.temp, top_p: o.top_p, max_tokens: o.max });
+      let fin = null;
+      for await (const ch of s) { onTok(ch.choices[0]?.delta?.content); fin = ch.choices[0]?.finish_reason || fin; }
+      return fin;
+    },
+    stop() { e.interruptGenerate(); },
+    unload() { return e.unload(); }
+  };
+}
+async function mkCPU(id) {
+  const tf = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3");
+  tf.env.allowLocalModels = false;
+  const cb = p => {
+    if (p.status === "progress") { bar((p.progress || 0) / 100); setSt("Descargando " + (p.file || "") + " " + Math.round(p.progress || 0) + "%", "load"); }
+    else if (p.status === "ready") setSt("Inicializando…", "load");
+  };
+  const tok = await tf.AutoTokenizer.from_pretrained(id, { progress_callback: cb });
+  const model = await tf.AutoModelForCausalLM.from_pretrained(id, { dtype: "q8", device: "wasm", progress_callback: cb });
+  ctxTok = 3072; $("maxt").value = Math.min(+$("maxt").value, 512);
+  let stopper = null;
+  return {
+    async gen(messages, o, onTok) {
+      stopper = new tf.InterruptableStoppingCriteria();
+      const inputs = tok.apply_chat_template(messages, { add_generation_prompt: true, return_dict: true });
+      const streamer = new tf.TextStreamer(tok, { skip_prompt: true, skip_special_tokens: true, callback_function: onTok });
+      const res = await model.generate({ ...inputs, max_new_tokens: o.max, do_sample: o.temp > 0, temperature: Math.max(o.temp, 0.01), top_p: o.top_p, streamer, stopping_criteria: stopper });
+      const gl = (res?.dims?.[1] ?? 0) - inputs.input_ids.dims[1];
+      return gl >= o.max - 1 ? "length" : "stop";
+    },
+    stop() { stopper?.interrupt(); },
+    unload() { return model.dispose?.(); }
+  };
+}
+$("load").onclick = async () => {
+  if (busy) return; const v = $("model").value, kind = v.slice(0, 3), id = v.slice(4);
+  if (!v) return;
+  busy = true; $("load").disabled = true; $("send").disabled = true; $("bar").style.display = "block"; bar(0); setSt("Preparando…", "load");
+  try {
+    if (engine) { try { await engine.unload(); } catch {} engine = null; }
+    engine = kind === "gpu" ? await mkGPU(id) : await mkCPU(id);
+    localStorage.setItem("cx_model2", v);
+    readyTxt = "Metatron AI listo · " + id.split("/").pop().replace("-MLC", "") + (kind === "cpu" ? " (CPU)" : " (GPU)");
+    setSt(readyTxt, "ok"); $("send").disabled = false; meter();
+  } catch (e) { console.error(e); engine = null; setSt("Error al cargar: " + (e.message || e) + (kind === "gpu" ? " · prueba un modelo más pequeño" : ""), "er"); }
+  finally { busy = false; $("load").disabled = false; setTimeout(() => $("bar").style.display = "none", 600); }
+};
+
+/* ============ Parser y aplicación de edits ============ */
+function parse(t) {
+  const re = /FILE:\s*(.+?)\s*\n<<<<<<< SEARCH\n([\s\S]*?)\n?=======\n([\s\S]*?)\n?>>>>>>> REPLACE/g, r = []; let m;
+  while ((m = re.exec(t))) r.push({ path: m[1].replace(/[`*"']/g, "").trim(), search: m[2], rep: m[3], st: "pend" });
+  return r;
+}
+function findLines(cur, s) {
+  const i = cur.indexOf(s); if (i >= 0) return [i, i + s.length];
+  const cl = cur.split("\n"), sl = s.split("\n").map(x => x.trim());
+  while (sl.length && !sl[sl.length - 1]) sl.pop(); if (!sl.length) return null;
+  for (let a = 0; a + sl.length <= cl.length; a++) {
+    if (sl.every((x, k) => cl[a + k].trim() === x)) {
+      const start = cl.slice(0, a).join("\n").length + (a ? 1 : 0), end = start + cl.slice(a, a + sl.length).join("\n").length;
+      return [start, end];
+    }
+  }
+  return null;
+}
+function applyOne(e) {
+  if (!e.search.trim()) { ws.set(e.path, e.rep); inc.add(e.path); e.st = "ok"; return true; }
+  if (!ws.has(e.path)) { e.st = "fail"; e.why = "archivo no existe"; return false; }
+  const cur = ws.get(e.path), r = findLines(cur, e.search);
+  if (!r) { e.st = "fail"; e.why = "no se encontró el texto a reemplazar"; return false; }
+  ws.set(e.path, cur.slice(0, r[0]) + e.rep + cur.slice(r[1])); e.st = "ok"; return true;
+}
+const snap = () => undo.push(new Map(ws));
+function after() { persist(); if (sel && ws.has(sel)) $("ed").value = ws.get(sel); tree(); renderEdits(); }
+function renderEdits() {
+  const b = $("eds"), pend = edits.filter(e => e.st === "pend").length;
+  $("nb").style.display = pend ? "" : "none"; $("nb").textContent = pend;
+  if (!edits.length) { b.innerHTML = '<div class="hint">Aquí aparecerán los cambios que proponga la IA.</div>'; return; }
+  b.innerHTML = edits.map((e, i) => {
+    const diff = (e.search ? e.search.split("\n").map(l => `<div class="d">- ${esc(l)}</div>`).join("") : `<div class="a">+ (archivo nuevo)</div>`) + e.rep.split("\n").map(l => `<div class="a">+ ${esc(l)}</div>`).join("");
+    const tag = e.st === "ok" ? '<span class="tag ok">aplicado</span>' : e.st === "fail" ? `<span class="tag er">falló: ${e.why}</span>` : e.st === "skip" ? '<span class="tag">descartado</span>' : '<span class="tag">pendiente</span>';
+    const btn = e.st === "pend" || e.st === "fail" ? `<button class="ok" data-a="${i}">Aplicar</button><button class="er" data-x="${i}">Descartar</button>` : "";
+    return `<div class="ed"><header><b>${esc(e.path)}</b>${tag}${btn}</header><pre class="df">${diff}</pre></div>`;
+  }).join("");
+}
+$("eds").onclick = e => {
+  const a = e.target.dataset?.a, x = e.target.dataset?.x;
+  if (a !== undefined) { snap(); applyOne(edits[a]); after(); }
+  if (x !== undefined) { edits[x].st = "skip"; renderEdits(); }
+};
+$("aall").onclick = () => { const p = edits.filter(e => e.st === "pend"); if (!p.length) return; snap(); p.forEach(applyOne); after(); };
+$("bund").onclick = () => {
+  const s = undo.pop(); if (!s) return;
+  ws.clear(); s.forEach((v, k) => ws.set(k, v)); edits.forEach(e => { if (e.st === "ok") e.st = "pend"; }); after();
+};
+
+/* ============ Ejecutar tarea ============ */
+async function run() {
+  const task = $("inp").value.trim(); if (!engine || busy || !task) return;
+  busy = true; $("send").style.display = "none"; $("stop").style.display = ""; $("inp").value = ""; $("inp").style.height = "";
+  const mode = $("mode").value, sys = IDENT + $("sys").value + MODE[mode];
+  const { out: ctx, cut } = ctxText(budget());
+  msg("u", task, true); logPush("u", task);
+  if (cut) msg("bt er", "⚠ Algunos archivos se truncaron u omitieron por el límite de contexto. Marca menos archivos o usa archivos más pequeños.", true);
+  const el = msg("bt", "…"); let out = "", t0 = performance.now(), n = 0;
+  const messages = [{ role: "system", content: sys }];
+  if (prev) messages.push({ role: "user", content: prev.u }, { role: "assistant", content: prev.a.slice(0, 500) });
+  messages.push({ role: "user", content: `ARCHIVOS DEL PROYECTO:\n${ctx || "(ninguno seleccionado)"}\nTAREA: ${task}` });
+  try {
+    try { window.__wl = await navigator.wakeLock?.request("screen"); } catch {}
+    const opts = { temp: +$("temp").value, top_p: +$("topp").value, max: +$("maxt").value };
+    const onTok = d => { if (d) { out += d; n++; el.innerHTML = md(out); $("chat").scrollTop = 1e9; } };
+    stopFlag = false;
+    let fin = await engine.gen(messages, opts, onTok), rounds = 0;
+    const maxR = +$("auto").value;
+    while (fin === "length" && !stopFlag && rounds < maxR) {
+      rounds++; setSt("Continuando… (" + rounds + "/" + maxR + ")", "load");
+      const cm = [{ role: "system", content: sys }, { role: "user", content: task }, { role: "assistant", content: out.slice(-1500) }, { role: "user", content: "Continúa EXACTAMENTE donde te quedaste, sin repetir lo anterior ni saludar." }];
+      const room = ctxTok - est(sys) - est(task) - 620;
+      fin = await engine.gen(cm, { ...opts, max: Math.max(128, Math.min(opts.max, room)) }, onTok);
+    }
+    const s = ((performance.now() - t0) / 1000).toFixed(1);
+    el.insertAdjacentHTML("beforeend", `<div class="meta">${s}s · ~${(n / (s || 1)).toFixed(1)} tok/s</div>`);
+    prev = { u: task.slice(0, 300), a: out }; logPush("bt", out);
+    const found = parse(out);
+    if (found.length) { edits = found; renderEdits(); el.insertAdjacentHTML("beforeend", `<div class="meta">✔ ${found.length} cambio(s) propuesto(s) → pestaña Cambios</div>`); if (matchMedia("(max-width:899px)").matches) tab("pc"); }
+  } catch (e) {
+    console.error(e); el.classList.add("er"); el.textContent = "Error: " + (e.message || e);
+    if (/lost|device|memory|OOM|out of/i.test(String(e.message || e))) { engine = null; el.textContent += "\nPosible falta de memoria o el sistema suspendió la GPU (común en móvil al cambiar de app). Pulsa Cargar de nuevo o usa un modelo más pequeño."; setSt("Modelo descargado de memoria: pulsa Cargar", "er"); }
+  }
+  finally { window.__wl?.release?.(); if (engine && readyTxt) setSt(readyTxt, "ok"); busy = false; $("send").style.display = ""; $("stop").style.display = "none"; $("send").disabled = !engine; }
+}
+$("send").onclick = run; $("stop").onclick = () => { stopFlag = true; engine?.stop(); };
+$("inp").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); run(); } });
+
+/* ============ Vista previa ============ */
+$("bprev").onclick = () => {
+  const names = [...ws.keys()];
+  const h = sel?.endsWith(".html") ? sel : names.find(n => /(^|\/)index\.html$/.test(n)) || names.find(n => n.endsWith(".html"));
+  if (!h) return alert("No hay ningún .html en el proyecto.");
+  const find = (ref) => { const r = ref.replace(/^\.\//, ""); return names.find(n => n === r || n.endsWith("/" + r)); };
+  let html = ws.get(h)
+    .replace(/<link[^>]*href=["']([^"']+)["'][^>]*>/gi, (m, u) => { const f = find(u); return f && /\.css$/.test(f) ? `<style>${ws.get(f)}</style>` : m; })
+    .replace(/<script([^>]*)src=["']([^"']+)["']([^>]*)>\s*<\/script>/gi, (m, a, u) => { const f = find(u); return f ? `<script${a}${""}>${ws.get(f).replace(/<\/script/gi, "<\\/script")}<\/script>` : m; });
+  $("fr").srcdoc = html; $("pv").classList.add("on");
+};
+$("pvx").onclick = () => { $("pv").classList.remove("on"); $("fr").srcdoc = ""; };
+
+/* ============ Guardar / ZIP ============ */
+function crc32(b) { if (!crc32.t) { crc32.t = []; for (let n = 0, c; n < 256; n++) { c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crc32.t[n] = c; } } let c = -1; for (let i = 0; i < b.length; i++) c = crc32.t[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; }
+function zip(files) {
+  const enc = new TextEncoder(), parts = [], cd = []; let off = 0;
+  for (const f of files) {
+    const n = enc.encode(f.name), d = enc.encode(f.data), crc = crc32(d), sz = d.length;
+    const h = new DataView(new ArrayBuffer(30)); h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true); h.setUint32(18, sz, true); h.setUint32(22, sz, true); h.setUint16(26, n.length, true);
+    parts.push(new Uint8Array(h.buffer), n, d);
+    const c = new DataView(new ArrayBuffer(46)); c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true); c.setUint32(20, sz, true); c.setUint32(24, sz, true); c.setUint16(28, n.length, true); c.setUint32(42, off, true);
+    cd.push(new Uint8Array(c.buffer), n); off += 30 + n.length + sz;
+  }
+  const cs = cd.reduce((a, x) => a + x.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cs, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...cd, new Uint8Array(e.buffer)], { type: "application/zip" });
+}
+async function saveFile(file) {
+  try { if (navigator.canShare?.({ files: [file] })) { await navigator.share({ files: [file] }); return; } }
+  catch (e) { if (e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+$("bzip").onclick = () => {
+  if (!ws.size) return;
+  saveFile(new File([zip([...ws].map(([name, data]) => ({ name, data })))], "proyecto.zip", { type: "application/zip" }));
+};
+$("bdl").onclick = () => { if (sel && ws.has(sel)) saveFile(new File([ws.get(sel)], sel.split("/").pop(), { type: "text/plain" })); };
+$("bsave").onclick = async () => {
+  if (!dirH) return; let n = 0;
+  try {
+    for (const [p, c] of ws) {
+      if (orig.get(p) === c) continue;
+      const parts = p.split("/"), fn = parts.pop(); let d = dirH;
+      for (const x of parts) d = await d.getDirectoryHandle(x, { create: true });
+      const w = await (await d.getFileHandle(fn, { create: true })).createWritable(); await w.write(c); await w.close(); orig.set(p, c); n++;
+    }
+    tree(); alert(n + " archivo(s) guardado(s) en la carpeta.");
+  } catch (e) { alert("Error al guardar: " + e.message); }
+};
+
+tree(); renderEdits();
+
+/* ============ Persistencia y offline ============ */
+try { navigator.storage?.persist?.(); } catch {}
+if (location.protocol.startsWith("http") && "serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
