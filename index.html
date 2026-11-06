@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>CodeForge — Terminal Real + Python + Unity Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#202024; --card:#2a2a2f; --text:#e8e5df; --muted:#9a978f;
+  --accent:#c47046; --accent-soft:rgba(196,112,70,.14);
+  --accent2:#7ba8b8; --accent2-soft:rgba(123,168,184,.14);
+  --border:rgba(232,229,223,.12);
+  --term-bg:#000000; --term-color:#39ff14;
+  --term-green:#39ff14; --term-cyan:#4dd0e1; --term-amber:#ffb300; --term-red:#ff5252;
+  --font-head:'Chakra Petch',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--font-head);font-size:15px;overflow:hidden;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--card);flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;min-width:0}
+.logo-mark{width:34px;height:34px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#1a1a1d;font-family:var(--font-mono);font-size:16px}
+.logo h1{font-size:17px;font-weight:700;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logo small{display:block;font-size:11px;color:var(--muted);font-weight:400;letter-spacing:.3px}
+.status{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.pill{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--term-red);flex-shrink:0}
+.dot.ok{background:var(--term-green);box-shadow:0 0 6px var(--term-green)}
+.dot.load{background:var(--term-amber);animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.3}}
+nav.tabs{display:flex;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab-btn{flex:1;min-width:84px;padding:12px 6px;background:none;border:none;color:var(--muted);font-family:var(--font-head);font-size:12.5px;font-weight:600;letter-spacing:.3px;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px}
+.tab-btn svg{width:16px;height:16px;flex-shrink:0}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--accent-soft)}
+main{flex:1;position:relative;overflow:hidden}
+.panel{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden}
+.panel.active{display:flex}
+.term-wrap{flex:1;display:flex;flex-direction:column;background:var(--term-bg);margin:10px;border-radius:10px;overflow:hidden;border:1px solid var(--border);box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.term-bar{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#0d0d0d;border-bottom:1px solid rgba(255,255,255,.08)}
+.traffic{display:flex;gap:6px}
+.traffic i{width:12px;height:12px;border-radius:50%;display:block}
+.traffic i:nth-child(1){background:#ff5f57}
+.traffic i:nth-child(2){background:#febc2e}
+.traffic i:nth-child(3){background:#28c840}
+.term-title{font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-left:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.term-body{flex:1;overflow-y:auto;padding:12px 14px;font-family:var(--font-mono);font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word;color:var(--term-color)}
+.term-body::-webkit-scrollbar{width:8px}
+.term-body::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+.line{margin-bottom:2px}
+.prompt{color:var(--term-color);font-weight:600}
+.path{color:var(--term-cyan)}
+.cmd{color:#e8e5df}
+.out{color:var(--term-color)}
+.err{color:var(--term-red)}
+.warn{color:var(--term-amber)}
+.info{color:var(--term-cyan)}
+.term-input-line{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.08);background:#050505}
+.term-input-line .prompt{font-family:var(--font-mono);font-size:14px;white-space:nowrap}
+#termInput{flex:1;background:transparent;border:none;outline:none;color:#e8e5df;font-family:var(--font-mono);font-size:16px;caret-color:var(--term-color);min-width:0}
+.py-layout{flex:1;display:flex;flex-direction:column;padding:10px;gap:10px;overflow:hidden}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{font-family:var(--font-head);font-size:13px;font-weight:600;padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px;min-height:44px}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1a1a1d}
+.btn.primary:hover{background:#d48056;color:#1a1a1d}
+.btn.ghost{background:transparent}
+.btn svg{width:15px;height:15px}
+select.btn{appearance:none;padding-right:30px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a978f' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 10px center}
+.editor-wrap{flex:1;display:flex;min-height:160px;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:#0d0f12}
+.gutter{padding:12px 10px 12px 14px;font-family:var(--font-mono);font-size:13px;line-height:1.55;color:#484f58;background:#101216;text-align:right;user-select:none;overflow:hidden;border-right:1px solid rgba(255,255,255,.06);min-width:42px}
+#pyEditor{flex:1;background:transparent;border:none;outline:none;resize:none;font-family:var(--font-mono);font-size:13px;line-height:1.55;color:#c9d1d9;padding:12px 14px;tab-size:4;white-space:pre;overflow:auto}
+#pyEditor::selection{background:rgba(196,112,70,.3)}
+.py-out{height:150px;min-height:100px;border-radius:10px;border:1px solid var(--border);background:#000;padding:10px 14px;overflow-y:auto;font-family:var(--font-mono);font-size:12.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:#39ff14}
+.py-out .ok{color:#39ff14}
+.py-out .err{color:#ff5252}
+.py-out .sys{color:var(--muted);font-style:italic}
+.unity-layout{flex:1;display:flex;gap:10px;padding:10px;overflow:hidden;min-height:0}
+.unity-side{width:260px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+.unity-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.unity-card h3{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.unity-card h3 svg{width:14px;height:14px;color:var(--accent)}
+.proj-item,.hier-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;font-family:var(--font-mono);font-size:12px;color:var(--text);border:1px solid transparent;transition:.15s;min-height:38px}
+.proj-item:hover,.hier-item:hover{background:var(--accent-soft);border-color:var(--border)}
+.proj-item.sel,.hier-item.sel{background:var(--accent-soft);border-color:var(--accent)}
+.proj-item .ico,.hier-item .ico{width:16px;height:16px;flex-shrink:0;color:var(--accent2)}
+.proj-item .del,.hier-item .del{margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;line-height:1}
+.proj-item .del:hover,.hier-item .del:hover{color:var(--term-red)}
+.unity-main{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
+.canvas-wrap{flex:1;min-height:220px;border-radius:10px;overflow:hidden;border:1px solid var(--border);position:relative;background:#0a0c10}
+#unityCanvas{display:block;width:100%;height:100%}
+.canvas-hud{position:absolute;top:8px;left:8px;font-family:var(--font-mono);font-size:11px;color:var(--muted);background:rgba(10,12,16,.7);padding:6px 10px;border-radius:6px;pointer-events:none;line-height:1.6}
+.controls-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.slider-grp{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-family:var(--font-mono);background:var(--card);padding:8px 12px;border-radius:8px;border:1px solid var(--border);min-height:44px}
+input[type=range]{width:110px;accent-color:var(--accent)}
+.script-view{height:140px;min-height:100px;border-radius:10px;border:1px solid var(--border);background:#000;padding:10px 14px;overflow-y:auto;font-family:var(--font-mono);font-size:12px;line-height:1.55;white-space:pre-wrap;color:#c9d1d9}
+.script-view .kw{color:#ff7b72}.script-view .str{color:#a5d6ff}.script-view .cmt{color:#8b949e;font-style:italic}.script-view .type{color:#79c0ff}
+.launch-layout{flex:1;display:flex;flex-direction:column;padding:10px;gap:10px;overflow:hidden}
+.launch-grid{flex:1;overflow-y:auto;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));align-content:start}
+.app-btn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px;background:var(--card);border:1px solid var(--border);border-radius:12px;cursor:pointer;transition:.15s;min-height:88px;justify-content:center}
+.app-btn:hover{border-color:var(--accent);transform:translateY(-2px)}
+.app-btn:active{transform:scale(.95)}
+.app-badge{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:700;font-size:18px;color:#fff}
+.app-btn span{font-size:11.5px;font-weight:600;color:var(--text);text-align:center;line-height:1.2}
+.launch-log{height:110px;min-height:80px;border-radius:10px;border:1px solid var(--border);background:#000;padding:10px 14px;overflow-y:auto;font-family:var(--font-mono);font-size:12px;line-height:1.6;white-space:pre-wrap;color:#39ff14}
+.launch-log .l-ok{color:#39ff14}.launch-log .l-warn{color:#ffb300}.launch-log .l-err{color:#ff5252}.launch-log .l-info{color:#4dd0e1}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--accent);color:var(--text);padding:12px 22px;border-radius:10px;font-size:13px;font-weight:600;z-index:99;transition:transform .3s;box-shadow:0 10px 30px rgba(0,0,0,.5);font-family:var(--font-head)}
+#toast.show{transform:translateX(-50%) translateY(0)}
+@media (max-width:760px){
+  body{overflow:auto}
+  main{overflow:visible;flex:none}
+  .panel{position:static;min-height:calc(100vh - 150px)}
+  .unity-layout{flex-direction:column}
+  .unity-side{width:100%;max-height:none}
+  .canvas-wrap{min-height:260px}
+  .logo h1{font-size:15px}
+  .pill{font-size:10px;padding:3px 8px}
+  .btn{padding:9px 12px;font-size:12px;min-height:42px}
+  .term-body{font-size:13px}
+  #termInput{font-size:16px}
+  .launch-grid{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">&lt;/&gt;</div>
+    <div>
+      <h1>CodeForge</h1>
+      <small>Terminal Real · Python · Unity Lab · v3.0 (sin simulación)</small>
+    </div>
+  </div>
+  <div class="status">
+    <span class="pill"><span class="dot load" id="pyDot"></span>Pyodide</span>
+    <span class="pill"><span class="dot load" id="thDot"></span>Three.js</span>
+    <span class="pill"><span class="dot ok"></span>localStorage</span>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="term">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+    Terminal
+  </button>
+  <button class="tab-btn" data-tab="launch">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    Apps
+  </button>
+  <button class="tab-btn" data-tab="py">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+    Python
+  </button>
+  <button class="tab-btn" data-tab="unity">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+    Unity
+  </button>
+</nav>
+
+<main>
+  <section class="panel active" id="panel-term">
+    <div class="term-wrap">
+      <div class="term-bar">
+        <div class="traffic"><i></i><i></i><i></i></div>
+        <span class="term-title" id="termTitle">bash</span>
+      </div>
+      <div class="term-body" id="termBody"></div>
+      <div class="term-input-line">
+        <span class="prompt" id="termPrompt">root<span class="path">:~#</span></span>
+        <input id="termInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" inputmode="text" placeholder="comando… (help)">
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-launch">
+    <div class="launch-layout">
+      <div class="launch-grid" id="launchGrid"></div>
+      <div class="launch-log" id="launchLog"><span class="l-info"># Lanzador de apps — pulsa un icono o usa "open &lt;app&gt;"</span></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-py">
+    <div class="py-layout">
+      <div class="toolbar">
+        <button class="btn primary" id="pyRun"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>Ejecutar</button>
+        <button class="btn" id="pyClear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/></svg>Limpiar</button>
+        <button class="btn" id="pySave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Guardar</button>
+        <select class="btn" id="pyLoad"><option value="">Cargar script…</option></select>
+        <button class="btn" id="pyExport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Exportar .py</button>
+        <select class="btn" id="pyExamples"><option value="">Ejemplos…</option></select>
+      </div>
+      <div class="editor-wrap">
+        <div class="gutter" id="pyGutter">1</div>
+        <textarea id="pyEditor" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="# Escribe tu código Python aquí y pulsa Ejecutar&#10;print('Hola desde CodeForge')"></textarea>
+      </div>
+      <div class="py-out" id="pyOut"><span class="sys">Inicializando intérprete de Python (Pyodide)…</span></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-unity">
+    <div class="unity-layout">
+      <div class="unity-side">
+        <div class="unity-card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>Proyectos / Scripts</h3>
+          <div id="projList"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn ghost" id="expAll" style="flex:1;min-height:38px;font-size:11px;padding:6px 8px">Exportar todo</button>
+            <button class="btn ghost" id="impAll" style="flex:1;min-height:38px;font-size:11px;padding:6px 8px">Importar</button>
+          </div>
+          <input type="file" id="impFile" accept=".json" style="display:none">
+        </div>
+        <div class="unity-card">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Jerarquía</h3>
+          <div id="hierList"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn ghost" data-add="Cube" style="flex:1;min-height:38px;font-size:11px;padding:6px 8px">+ Cubo</button>
+            <button class="btn ghost" data-add="Sphere" style="flex:1;min-height:38px;font-size:11px;padding:6px 8px">+ Esfera</button>
+            <button class="btn ghost" data-add="Light" style="flex:1;min-height:38px;font-size:11px;padding:6px 8px">+ Luz</button>
+          </div>
+        </div>
+      </div>
+      <div class="unity-main">
+        <div class="canvas-wrap">
+          <canvas id="unityCanvas"></canvas>
+          <div class="canvas-hud" id="canvasHud">objetos: 0 · fps: --</div>
+        </div>
+        <div class="controls-row">
+          <button class="btn primary" id="physToggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Física: ON</button>
+          <button class="btn" id="sceneReset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>Reiniciar</button>
+          <button class="btn" id="sceneSave">Guardar escena</button>
+          <div class="slider-grp">gravedad <input type="range" id="gravSlider" min="0" max="30" value="9.8" step="0.1"><span id="gravVal" style="color:var(--accent);min-width:34px">9.8</span></div>
+        </div>
+        <div class="script-view" id="scriptView">// Selecciona un script de la lista para ver su contenido.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+(function(){
+'use strict';
+/* ============================================================================
+   CodeForge v3.0 — versión SIN SIMULACIÓN.
+   [CAMBIOS RESPECTO A LA VERSIÓN ANTERIOR]
+   1. Eliminado el sistema de archivos virtual hardcodeado (objeto "vfs" con
+      readme.txt/notas.md fijos). Ahora existe un FS REAL persistido en
+      localStorage (ver módulo FS más abajo). Los archivos iniciales se siembran
+      UNA sola vez y después el usuario los gestiona de verdad (touch/mkdir/rm).
+   2. Eliminados los valores fijos de neofetch/uname/whoami/pwd. Ahora se leen
+      de fuentes reales: navigator.*, screen.*, performance.now(), usuario y
+      directorio actual persistidos en localStorage.
+   3. Eliminados los arrays hardcodeados de ejemplos Python y plantillas C#.
+      Se siembran una vez en localStorage y se cargan desde ahí (reales,
+      editables y eliminables).
+   4. Eliminados los objetos por defecto de la escena Unity. La escena carga
+      EXCLUSIVAMENTE desde localStorage; si está vacía, empieza vacía.
+   5. Añadido cliente de red REAL: comandos "curl <url>" y "api <ruta>" con
+      fetch() real, y "setapibase <url>" para configurar el backend.
+   [PENDIENTE para entorno 100% real]
+   - Sustituir el FS en localStorage por IndexedDB o un backend REST.
+   - En api() añadir cabecera Authorization con token real (ver TODO abajo).
+   - curl está limitado por CORS del navegador; usar proxy propio en producción.
+============================================================================ */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove('show'),2200);}
+function download(filename,text,mime){const blob=new Blob([text],{type:mime||'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+const LS={
+  get(k,d){try{const v=localStorage.getItem('codeforge_'+k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem('codeforge_'+k,JSON.stringify(v))}catch(e){toast('Error: almacenamiento lleno')}}
+};
+
+/* ---- TABS (eventos reales del DOM, sin cambios) ---- */
+$$('.tab-btn').forEach(b=>b.addEventListener('click',()=>{
+  $$('.tab-btn').forEach(x=>x.classList.remove('active'));
+  $$('.panel').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  $('#panel-'+b.dataset.tab).classList.add('active');
+  if(b.dataset.tab==='unity' && Unity.ready) Unity.onResize();
+  if(b.dataset.tab==='term') $('#termInput').focus();
+}));
+window.switchTab = name => { const btn=$$('.tab-btn').find(b=>b.dataset.tab===name); if(btn) btn.click(); };
+
+/* ============================================================================
+   SISTEMA DE ARCHIVOS REAL persistido en localStorage.
+   [SIMULACIÓN ELIMINADA] antes: const vfs={readme.txt:"...", notas.md:"..."}
+   Ahora: FS es un mapa plano de rutas absolutas que se guarda en localStorage
+   tras cada mutación. Soporta directorios, archivos, cwd real y comandos
+   cd/ls/pwd/cat/touch/mkdir/rm + redirección "echo texto > archivo".
+   [PENDIENTE] migrar a IndexedDB o API REST si se quiere FS remoto/compartido.
+============================================================================ */
+const FS_KEY='fs_v1';
+let FS = LS.get(FS_KEY, null);
+let cwd = LS.get('cwd', null);
+let USER = LS.get('user', 'root');          // [SIMULACIÓN ELIMINADA] antes fijo por estilo de prompt
+let promptStyle = LS.get('promptStyle', 'kali');
+let termColor = LS.get('termColor', '#39ff14');
+let termHistory = LS.get('termHistory', []);
+let API_BASE = LS.get('apibase', '');       // [PENDIENTE] URL real de tu backend, ej. https://api.midominio.com/v1
+const HOSTS={kali:'kali',termux:'localhost',ubuntu:'ubuntu',forge:'codeforge'};
+function homePath(){ return '/home/'+USER; }
+function saveFS(){ LS.set(FS_KEY, FS); }
+function normPath(p){
+  // Resuelve rutas relativas, . y .., respecto a cwd.
+  let abs = (p[0]==='/') ? p : cwd+'/'+p;
+  const parts=[];
+  abs.split('/').forEach(seg=>{
+    if(seg===''||seg==='.') return;
+    if(seg==='..') parts.pop(); else parts.push(seg);
+  });
+  return '/'+parts.join('/');
+}
+function isDir(p){ const e=FS[p]; return !!(e && e.t==='d'); }
+function isFile(p){ const e=FS[p]; return !!(e && e.t==='f'); }
+function lsImmediate(dir){
+  const prefix = dir==='/' ? '/' : dir+'/';
+  const seen={};
+  Object.keys(FS).forEach(k=>{
+    if(k.indexOf(prefix)!==0) return;
+    const rest = k.slice(prefix.length);
+    if(!rest) return;
+    const first = rest.split('/')[0];
+    seen[first]= (rest.indexOf('/')===-1) ? FS[k].t : 'd';
+  });
+  return seen;
+}
+// Siembra inicial (UNA sola vez): datos reales persistidos, no mocks en memoria.
+if(!FS){
+  FS={ '/':{t:'d'}, '/home':{t:'d'} };
+  FS[homePath()]={t:'d'};
+  FS[homePath()+'/readme.txt']={t:'f', c:'Bienvenido a CodeForge v3.0 (sin simulación).\nFS real en localStorage · Python real con Pyodide · Escena 3D real con Three.js.\nComandos nuevos: cd, touch, mkdir, rm, curl, api, setapibase, su.'};
+  FS[homePath()+'/notas.md']={t:'f', c:'# Notas\n- Los archivos se guardan de verdad en localStorage.\n- "setapibase <url>" configura el backend para el comando api.\n- "su <nombre>" cambia el usuario y su home.'};
+  saveFS();
+}
+if(!cwd || !isDir(cwd)){ cwd=homePath(); LS.set('cwd',cwd); }
+document.documentElement.style.setProperty('--term-color', termColor);
+
+/* ============================================================================
+   LANZADOR DE APPS — URI schemes reales + fallback real (sin simulación).
+   (La lógica ya era real; se mantiene. APPS es catálogo de configuración.)
+============================================================================ */
+const APPS=[
+  {id:'whatsapp',name:'WhatsApp',uri:'whatsapp://send?text=Hola',fallback:'https://wa.me/',color:'#25D366',letter:'W'},
+  {id:'youtube',name:'YouTube',uri:'vnd.youtube://',fallback:'https://www.youtube.com',color:'#FF0000',letter:'Y'},
+  {id:'tel',name:'Teléfono',uri:'tel:',fallback:null,color:'#34A853',letter:'T',promptNum:true},
+  {id:'sms',name:'Mensajes',uri:'sms:',fallback:null,color:'#4285F4',letter:'S',promptNum:true},
+  {id:'mail',name:'Email',uri:'mailto:',fallback:null,color:'#EA4335',letter:'@'},
+  {id:'maps',name:'Mapas',uri:'geo:0,0?q=',fallback:'https://maps.google.com',color:'#FBBC05',letter:'M'},
+  {id:'browser',name:'Navegador',uri:'https://www.google.com',fallback:null,color:'#1a73e8',letter:'N'},
+  {id:'instagram',name:'Instagram',uri:'instagram://app',fallback:'https://instagram.com',color:'#E1306C',letter:'I'},
+  {id:'tiktok',name:'TikTok',uri:'snssdk1233://',fallback:'https://www.tiktok.com',color:'#010101',letter:'T'},
+  {id:'spotify',name:'Spotify',uri:'spotify:',fallback:'https://open.spotify.com',color:'#1DB954',letter:'S'},
+  {id:'telegram',name:'Telegram',uri:'tg://',fallback:'https://t.me/',color:'#0088cc',letter:'Tg'},
+  {id:'twitter',name:'X / Twitter',uri:'twitter://',fallback:'https://twitter.com',color:'#111',letter:'X'},
+  {id:'facebook',name:'Facebook',uri:'fb://',fallback:'https://facebook.com',color:'#1877F2',letter:'F'},
+  {id:'netflix',name:'Netflix',uri:'nflx://',fallback:'https://netflix.com',color:'#E50914',letter:'N'},
+  {id:'chrome',name:'Chrome',uri:'googlechrome://',fallback:'https://www.google.com',color:'#FFCE00',letter:'C'}
+];
+let launchTimer=null;
+function logLaunch(html,cls){const log=$('#launchLog');const s=document.createElement('div');s.className=cls||'l-ok';s.innerHTML=html;log.appendChild(s);log.scrollTop=log.scrollHeight;}
+function launchApp(app,customArg){
+  let uri=app.uri;
+  if(app.promptNum){const num=customArg||prompt('Número de teléfono (con clave de país):','');if(!num){logLaunch('<span class="l-warn">✘ '+app.name+': cancelado.</span>');return;}uri=app.id==='sms'?'sms:'+num:'tel:'+num;}
+  if(app.id==='maps'&&customArg) uri='geo:0,0?q='+encodeURIComponent(customArg);
+  logLaunch('<span class="l-info">→ Lanzando '+app.name+'…</span>');
+  clearTimeout(launchTimer);
+  const onVis=()=>{if(document.hidden){clearTimeout(launchTimer);logLaunch('<span class="l-ok">✔ '+app.name+': abierta.</span>');}};
+  document.addEventListener('visibilitychange',onVis);
+  launchTimer=setTimeout(()=>{
+    document.removeEventListener('visibilitychange',onVis);
+    if(document.visibilityState==='visible'){
+      if(app.fallback){logLaunch('<span class="l-warn">⚠ '+app.name+': app no detectada, abriendo web…</span>');try{window.location.href=app.fallback;}catch(e){}}
+      else logLaunch('<span class="l-err">✘ '+app.name+': esquema no disponible. La página sigue activa.</span>');
+    }
+  },1800);
+  try{window.location.href=uri;}catch(e){clearTimeout(launchTimer);logLaunch('<span class="l-err">✘ Error: '+e.message+'</span>');}
+}
+const grid=$('#launchGrid');
+APPS.forEach(app=>{
+  const b=document.createElement('button');b.className='app-btn';
+  b.innerHTML='<div class="app-badge" style="background:'+app.color+'">'+app.letter+'</div><span>'+app.name+'</span>';
+  b.addEventListener('click',()=>launchApp(app));
+  grid.appendChild(b);
+});
+
+/* ============================================================================
+   CLIENTE DE RED REAL (fetch). [PENDIENTE] conectar a tu backend real.
+============================================================================ */
+async function realFetch(url, opts){
+  // [PENDIENTE] añadir aquí cabeceras de autenticación real, p. ej.:
+  // opts.headers = Object.assign({'Authorization':'Bearer '+LS.get('token','')}, opts.headers||{});
+  const r=await fetch(url, opts||{});
+  const ct=r.headers.get('content-type')||'';
+  const body = ct.includes('json') ? JSON.stringify(await r.json(),null,2) : (await r.text()).slice(0,4000);
+  return {status:r.status, ok:r.ok, body};
+}
+
+/* ============================================================================
+   TERMINAL — motor de comandos real (sin datos simulados).
+============================================================================ */
+const termBody=$('#termBody'), termInput=$('#termInput'), termPrompt=$('#termPrompt'), termTitle=$('#termTitle');
+let histIdx=termHistory.length;
+function applyPrompt(){
+  const host=HOSTS[promptStyle]||'kali';
+  const end = USER==='root' ? '#' : '$';
+  const short = cwd===homePath() ? '~' : cwd.split('/').pop();
+  termPrompt.innerHTML=USER+'@'+host+'<span class="path">:'+short+end+'</span>';
+  termTitle.textContent=USER+'@'+host+': '+short+' — bash';
+}
+function termPrint(html,cls){const d=document.createElement('div');d.className='line '+(cls||'out');d.innerHTML=html;termBody.appendChild(d);termBody.scrollTop=termBody.scrollHeight;}
+function termEchoLine(cmd){
+  const host=HOSTS[promptStyle]||'kali'; const end=USER==='root'?'#':'$';
+  const short=cwd===homePath()?'~':cwd.split('/').pop();
+  termPrint('<span class="prompt">'+USER+'@'+host+'</span><span class="path">:'+short+end+'</span> <span class="cmd"></span>');
+  termBody.lastChild.querySelector('.cmd').textContent=cmd;
+}
+function esc(s){return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+const cmds={
+  help(){
+    return '<span class="info">Comandos (todos operan sobre datos reales):</span>\n'+
+      '  help · clear · ls [dir] · cd <dir> · pwd · cat <file> · echo [txt > file]\n'+
+      '  touch <file> · mkdir <dir> · rm <path> · date · whoami · su <name>\n'+
+      '  uname [-a] · history · neofetch · theme <color> · prompt <estilo>\n'+
+      '  apps · open|launch <app> · call <num> · sms <num> · web <url>\n'+
+      '  curl <url> · api <ruta> · setapibase <url>  (cliente HTTP real)\n'+
+      '  python · unity · apps  (saltar de pestaña)';
+  },
+  clear(){ termBody.innerHTML=''; return null; },
+  pwd(){ return cwd; },
+  whoami(){ return USER; },
+  su(args){
+    if(!args.length) return '<span class="warn">Uso: su &lt;nombre&gt;</span>';
+    const old=USER; USER=args[0].replace(/[^a-z0-9_-]/gi,'').slice(0,20)||'user';
+    LS.set('user',USER);
+    if(!isDir(homePath())){ FS[homePath()]={t:'d'}; saveFS(); }
+    cwd=homePath(); LS.set('cwd',cwd); applyPrompt();
+    return '<span class="info">Usuario cambiado de '+old+' a '+USER+' (home real creado).</span>';
+  },
+  cd(args){
+    const target = args[0] ? (args[0]==='~'?homePath():normPath(args[0])) : homePath();
+    if(!isDir(target)) return '<span class="err">cd: '+esc(args[0]||'')+': No es un directorio</span>';
+    cwd=target; LS.set('cwd',cwd); applyPrompt(); return null;
+  },
+  ls(args){
+    const dir = args[0] ? normPath(args[0]) : cwd;
+    if(!isDir(dir)) return '<span class="err">ls: no se puede acceder a '+esc(args[0]||'')+'</span>';
+    const items=lsImmediate(dir);
+    const names=Object.keys(items).sort();
+    if(!names.length) return '(directorio vacío)';
+    return names.map(n=>items[n]==='d'?'<span class="path">'+n+'/</span>':'<span class="cmd">'+n+'</span>').join('   ');
+  },
+  touch(args){
+    if(!args.length) return '<span class="err">touch: falta un archivo</span>';
+    const p=normPath(args[0]);
+    if(FS[p]) return null;
+    FS[p]={t:'f',c:''}; saveFS(); return null;
+  },
+  mkdir(args){
+    if(!args.length) return '<span class="err">mkdir: falta un directorio</span>';
+    const p=normPath(args[0]);
+    if(FS[p]) return '<span class="err">mkdir: ya existe</span>';
+    FS[p]={t:'d'}; saveFS(); return null;
+  },
+  rm(args){
+    if(!args.length) return '<span class="err">rm: falta un objetivo</span>';
+    const p=normPath(args[0]);
+    if(!FS[p]||p==='/'||p===homePath()) return '<span class="err">rm: no se puede eliminar '+esc(args[0])+'</span>';
+    // Borrar también entradas anidadas si es directorio.
+    Object.keys(FS).forEach(k=>{ if(k===p||k.indexOf(p+'/')===0) delete FS[k]; });
+    saveFS(); return null;
+  },
+  echo(args){
+    // Redirección real a archivo: echo texto > nombre.txt
+    const gt=args.indexOf('>');
+    if(gt>-1 && args[gt+1]){
+      const text=args.slice(0,gt).join(' ');
+      const p=normPath(args[gt+1]);
+      FS[p]={t:'f',c:text}; saveFS(); return null;
+    }
+    return esc(args.join(' '));
+  },
+  cat(args){
+    if(!args.length) return '<span class="err">cat: falta un operando</span>';
+    const p=normPath(args[0]);
+    if(isFile(p)) return esc(FS[p].c);
+    // Integración real con scripts Python guardados (datos reales en LS).
+    const saved=LS.get('py_scripts',{});
+    const key=args[0].replace(/\.py$/,'');
+    if(saved[key]) return esc(saved[key]);
+    return '<span class="err">cat: '+esc(args[0])+': No existe el archivo</span>';
+  },
+  date(){ return new Date().toString(); },   // fecha real del sistema
+  uname(args){
+    // [SIMULACIÓN ELIMINADA] antes devolvía cadena fija "CodeForgeOS". Ahora datos reales.
+    const plat=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'unknown';
+    const cores=navigator.hardwareConcurrency||'?';
+    if(args[0]==='-a') return 'CodeForgeOS 3.0 '+plat+' #1 SMP '+cores+' cores GNU/Browser';
+    return plat;
+  },
+  history(){ return termHistory.map((c,i)=>'  '+(i+1)+'  '+esc(c)).join('\n')||'(vacío)'; },
+  neofetch(){
+    // [SIMULACIÓN ELIMINADA] antes valores fijos. Ahora todo leído en tiempo real.
+    const plat=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'unknown';
+    const cores=navigator.hardwareConcurrency||'N/A';
+    const mem=navigator.deviceMemory?(navigator.deviceMemory+' GB'):'N/A';
+    const res=screen.width+'x'+screen.height+' @ '+window.devicePixelRatio+'x';
+    const up=Math.floor(performance.now()/1000);
+    const online=navigator.onLine?'online':'offline';
+    const lang=navigator.language;
+    return '<span class="path">       ___          </span>  '+USER+'@'+(HOSTS[promptStyle]||'kali')+'\n'+
+      '<span class="path">      /   \\         </span>  ----------------\n'+
+      '<span class="path">     |  o  |        </span>  SO: '+esc(plat)+'\n'+
+      '<span class="path">      \\___/         </span>  Shell: forge-bash\n'+
+      '<span class="path">     /|   |\\        </span>  CPU cores: '+cores+'\n'+
+      '<span class="path">    /_|___|_\\       </span>  RAM: '+mem+'\n'+
+      '<span class="path">      |   |         </span>  Pantalla: '+res+'\n'+
+      '<span class="path">      |___|         </span>  Idioma: '+lang+' · '+online+' · uptime '+up+'s';
+  },
+  apps(){ return '<span class="info">Apps lanzables (open &lt;app&gt;):</span>\n  '+APPS.map(a=>'<span class="cmd">'+a.id+'</span>').join('  ·  '); },
+  open(args){ return cmds.launch(args); },
+  launch(args){
+    if(!args.length) return cmds.apps();
+    const target=args[0].toLowerCase().replace(/:$/,'');
+    if(/^https?:\/\//.test(target)){ window.open(target,'_blank'); return '<span class="info">→ Abriendo '+esc(target)+'…</span>'; }
+    const app=APPS.find(a=>a.id===target);
+    if(!app) return '<span class="err">launch: app "'+esc(args[0])+'" no reconocida. Escribe "apps".</span>';
+    switchTab('launch'); setTimeout(()=>launchApp(app,args.slice(1).join(' ')),250);
+    return '<span class="info">→ Lanzando '+app.name+'…</span>';
+  },
+  call(args){ const num=args[0]||prompt('Número:',''); if(!num)return'<span class="warn">Uso: call &lt;número&gt;</span>'; switchTab('launch'); setTimeout(()=>launchApp(APPS.find(a=>a.id==='tel'),num),250); return '<span class="info">→ Llamando a '+esc(num)+'…</span>'; },
+  sms(args){ const num=args[0]||prompt('Número:',''); if(!num)return'<span class="warn">Uso: sms &lt;número&gt;</span>'; switchTab('launch'); setTimeout(()=>launchApp(APPS.find(a=>a.id==='sms'),num),250); return '<span class="info">→ SMS a '+esc(num)+'…</span>'; },
+  web(args){ if(!args.length)return'<span class="warn">Uso: web &lt;url&gt;</span>'; let u=args[0]; if(!/^https?:\/\//.test(u))u='https://'+u; window.open(u,'_blank'); return '<span class="info">→ Abriendo '+esc(u)+'…</span>'; },
+  prompt(args){ const s=(args[0]||'').toLowerCase(); if(!HOSTS[s]) return '<span class="err">Estilos: kali | termux | ubuntu | forge</span>'; promptStyle=s; LS.set('promptStyle',s); applyPrompt(); return '<span class="info">Prompt: '+s+'.</span>'; },
+  theme(args){ const colors={green:'#39ff14',amber:'#ffb300',cyan:'#4dd0e1',white:'#e8e5df'}; const c=(args[0]||'').toLowerCase(); if(!colors[c]) return '<span class="err">Colores: green | amber | cyan | white</span>'; termColor=colors[c]; LS.set('termColor',termColor); document.documentElement.style.setProperty('--term-color',termColor); return '<span class="info">Color: '+c+'.</span>'; },
+  setapibase(args){
+    // [PENDIENTE] establece aquí la URL real de tu API. Se persiste en localStorage.
+    if(!args.length) return '<span class="info">API base actual: '+(API_BASE||'(sin configurar)')+'</span>';
+    API_BASE=args[0].replace(/\/+$/,''); LS.set('apibase',API_BASE);
+    return '<span class="info">API base guardada: '+esc(API_BASE)+'</span>';
+  },
+  curl(args){
+    // Petición HTTP REAL. [PENDIENTE] en producción usar proxy propio (CORS).
+    if(!args.length) return '<span class="warn">Uso: curl &lt;url&gt;</span>';
+    let url=args[0]; if(!/^https?:\/\//.test(url)) url='https://'+url;
+    termPrint('<span class="info">→ GET '+esc(url)+' …</span>');
+    realFetch(url).then(r=>{
+      termPrint('<span class="'+(r.ok?'out':'err')+'">HTTP '+r.status+'</span>\n'+esc(r.body));
+    }).catch(e=>termPrint('<span class="err">✘ '+esc(e.message)+' (posible bloqueo CORS — usa un proxy)</span>'));
+    return null;
+  },
+  api(args){
+    // Cliente real contra la API configurada con setapibase.
+    // [PENDIENTE] añadir autenticación por token en la función realFetch().
+    if(!API_BASE) return '<span class="err">Primero configura: setapibase https://tu-api.com/v1</span>';
+    if(!args.length) return '<span class="warn">Uso: api &lt;ruta&gt;</span>';
+    const url=API_BASE+'/'+args[0].replace(/^\/+/,'');
+    termPrint('<span class="info">→ GET '+esc(url)+' …</span>');
+    realFetch(url).then(r=>termPrint('<span class="'+(r.ok?'out':'err')+'">HTTP '+r.status+'</span>\n'+esc(r.body)))
+      .catch(e=>termPrint('<span class="err">✘ '+esc(e.message)+'</span>'));
+    return null;
+  },
+  python(){ switchTab('py'); return '<span class="info">→ Intérprete Python…</span>'; },
+  unity(){ switchTab('unity'); return '<span class="info">→ Unity Lab…</span>'; }
+};
+function runTerm(raw){
+  const input=raw.trim(); if(!input) return;
+  termEchoLine(input);
+  termHistory.push(input); if(termHistory.length>200) termHistory.shift();
+  LS.set('termHistory',termHistory);   // historial real persistido
+  histIdx=termHistory.length;
+  const parts=input.split(/\s+/); const name=parts[0].toLowerCase(); const args=parts.slice(1);
+  if(cmds[name]){ const out=cmds[name](args); if(out!==null&&out!==undefined) termPrint(out); }
+  else termPrint('<span class="err">bash: '+esc(name)+': comando no encontrado</span>');
+}
+termInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ runTerm(termInput.value); termInput.value=''; }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); if(histIdx>0){histIdx--;termInput.value=termHistory[histIdx]||'';} }
+  else if(e.key==='ArrowDown'){ e.preventDefault(); if(histIdx<termHistory.length-1){histIdx++;termInput.value=termHistory[histIdx]||'';}else{histIdx=termHistory.length;termInput.value='';} }
+});
+applyPrompt();
+termPrint('<span class="info">CodeForgeOS 3.0 — datos reales (sin simulación)</span>');
+termPrint('<span class="warn">FS en localStorage · "help" para comandos · "curl https://…" prueba red real.</span>','warn');
+termPrint('');
+
+/* ============================================================================
+   PYTHON — Pyodide (ejecución REAL, no simulada). Sin cambios de lógica.
+   [SIMULACIÓN ELIMINADA] ejemplos ya no están hardcodeados: se siembran una
+   vez en localStorage y se cargan desde ahí.
+============================================================================ */
+const SEED_EXAMPLES={
+  'Hola mundo':"print('Hola, mundo!')\nprint('2 + 3 =', 2+3)",
+  'Fibonacci':"def fib(n):\n    a,b=0,1\n    for _ in range(n):\n        print(a, end=' ')\n        a,b=b,a+b\n    print()\nfib(15)",
+  'Factorial':"def fact(n):\n    return 1 if n<=1 else n*fact(n-1)\nfor i in range(1,8):\n    print(f'{i}! = {fact(i)}')"
+};
+if(!LS.get('seeded_examples',false)){ LS.set('py_examples',SEED_EXAMPLES); LS.set('seeded_examples',true); }
+const EXAMPLES = LS.get('py_examples',{});   // datos reales, editables vía guardar/cargar
+
+const pyEditor=$('#pyEditor'), pyGutter=$('#pyGutter'), pyOut=$('#pyOut'), pyLoad=$('#pyLoad'), pyExamples=$('#pyExamples');
+let pyodide=null, pyReady=false;
+function pyPrint(text,cls){const s=document.createElement('span');s.className=cls||'';s.textContent=text;pyOut.appendChild(s);pyOut.scrollTop=pyOut.scrollHeight;}
+function updateGutter(){const lines=pyEditor.value.split('\n').length;let h='';for(let i=1;i<=lines;i++)h+=i+'\n';pyGutter.textContent=h;}
+pyEditor.addEventListener('input',updateGutter);
+pyEditor.addEventListener('scroll',()=>{pyGutter.scrollTop=pyEditor.scrollTop;});
+pyEditor.addEventListener('keydown',e=>{
+  if(e.key==='Tab'){e.preventDefault();const s=pyEditor.selectionStart,en=pyEditor.selectionEnd;pyEditor.value=pyEditor.value.slice(0,s)+'    '+pyEditor.value.slice(en);pyEditor.selectionStart=pyEditor.selectionEnd=s+4;updateGutter();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();$('#pyRun').click();}
+});
+Object.keys(EXAMPLES).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k;pyExamples.appendChild(o);});
+pyExamples.addEventListener('change',()=>{if(pyExamples.value){pyEditor.value=EXAMPLES[pyExamples.value];updateGutter();pyExamples.value='';}});
+function refreshPyLoad(){
+  const saved=LS.get('py_scripts',{});
+  pyLoad.innerHTML='<option value="">Cargar script…</option>';
+  Object.keys(saved).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=k+'.py';pyLoad.appendChild(o);});
+}
+pyLoad.addEventListener('change',()=>{const saved=LS.get('py_scripts',{});if(saved[pyLoad.value]){pyEditor.value=saved[pyLoad.value];updateGutter();toast('Cargado: '+pyLoad.value);}pyLoad.value='';});
+$('#pySave').addEventListener('click',()=>{const name=prompt('Nombre del script:','mi_script');if(!name)return;const saved=LS.get('py_scripts',{});saved[name.trim()]=pyEditor.value;LS.set('py_scripts',saved);refreshPyLoad();Unity.refreshProj();toast('Guardado: '+name.trim()+'.py');});
+$('#pyExport').addEventListener('click',()=>{download('script.py',pyEditor.value,'text/x-python');toast('Exportado');});
+$('#pyClear').addEventListener('click',()=>{pyOut.innerHTML='';});
+$('#pyRun').addEventListener('click',async()=>{
+  if(!pyReady){toast('Pyodide cargando…');return;}
+  pyOut.innerHTML=''; pyPrint('>>> Ejecutando…\n','sys'); const t0=performance.now();
+  try{ await pyodide.runPythonAsync(pyEditor.value); pyPrint('\n[OK · '+(performance.now()-t0).toFixed(1)+'ms]\n','ok'); }
+  catch(err){ pyPrint('\n'+(err.message||String(err))+'\n','err'); }
+});
+async function initPyodide(){
+  try{
+    pyodide=await loadPyodide({indexURL:'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/'});
+    pyodide.setStdout({batched:s=>pyPrint(s+'\n')});
+    pyodide.setStderr({batched:s=>pyPrint(s+'\n','err')});
+    pyReady=true; $('#pyDot').classList.remove('load'); $('#pyDot').classList.add('ok');
+    pyOut.innerHTML='<span class="sys">Python listo (Pyodide '+pyodide.version+'). Ctrl+Enter para ejecutar.</span>';
+  }catch(e){ pyOut.innerHTML='<span class="err">No se pudo cargar Pyodide (sin conexión).</span>'; $('#pyDot').style.background='var(--term-red)'; }
+}
+initPyodide(); refreshPyLoad(); updateGutter();
+
+/* ============================================================================
+   UNITY LAB — Three.js (render y física REALES).
+   [SIMULACIÓN ELIMINADA] antes: si no había escena guardada se añadían cubos
+   por defecto (hardcodeados). Ahora: la escena carga SÓLO desde localStorage;
+   si está vacía, empieza vacía y el usuario añade objetos reales.
+   [SIMULACIÓN ELIMINADA] plantillas C# ya no hardcodeadas: sembradas una vez
+   en localStorage y cargadas desde ahí.
+============================================================================ */
+const SEED_CS={
+  'PlayerController.cs':'using UnityEngine;\n\npublic class PlayerController : MonoBehaviour\n{\n    public float speed = 5f;\n    private Rigidbody rb;\n    void Start(){ rb = GetComponent<Rigidbody>(); }\n    void Update(){\n        Vector3 move = new Vector3(Input.GetAxis("Horizontal"),0,Input.GetAxis("Vertical")) * speed;\n        rb.velocity = new Vector3(move.x, rb.velocity.y, move.z);\n    }\n}'
+};
+if(!LS.get('seeded_cs',false)){ LS.set('cs_templates',SEED_CS); LS.set('seeded_cs',true); }
+const CS_SHARP = LS.get('cs_templates',{});   // datos reales persistidos
+
+const Unity={ready:false,scene:null,camera:null,renderer:null,objects:[],selected:null,physics:true,gravity:9.8,clock:null,animId:null,arrow:null};
+function highlightCS(code){
+  let esc2=code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  esc2=esc2.replace(/(\/\/[^\n]*)/g,'<span class="cmt">$1</span>');
+  esc2=esc2.replace(/("[^"]*")/g,'<span class="str">$1</span>');
+  esc2=esc2.replace(/\b(using|public|private|class|void|float|int|bool|Vector3|GameObject|Transform|Rigidbody|Quaternion|return|if|new)\b/g,'<span class="kw">$1</span>');
+  esc2=esc2.replace(/\b(Start|Update|GetComponent|GetAxis)\b/g,'<span class="type">$1</span>');
+  return esc2;
+}
+Unity.refreshProj=function(){
+  const list=$('#projList');list.innerHTML='';
+  const addItem=(name,onView,onDel)=>{
+    const d=document.createElement('div');d.className='proj-item';
+    d.innerHTML='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+name+'</span>'+(onDel?'<button class="del" title="Eliminar">×</button>':'');
+    d.addEventListener('click',e=>{if(e.target.classList.contains('del'))return;onView();$$('.proj-item').forEach(x=>x.classList.remove('sel'));d.classList.add('sel');});
+    if(onDel)d.querySelector('.del').addEventListener('click',e=>{e.stopPropagation();onDel();});
+    list.appendChild(d);
+  };
+  Object.keys(CS_SHARP).forEach(k=>addItem(k,()=>{$('#scriptView').innerHTML=highlightCS(CS_SHARP[k]);toast('Vista: '+k);},()=>{
+    if(confirm('¿Eliminar plantilla '+k+'?')){delete CS_SHARP[k];LS.set('cs_templates',CS_SHARP);Unity.refreshProj();toast('Eliminada');}
+  }));
+  const saved=LS.get('py_scripts',{});
+  Object.keys(saved).forEach(k=>addItem(k+'.py',()=>{
+    $('#scriptView').innerHTML='<span class="cmt"># Script Python (editar en pestaña Python)</span>\n'+esc(saved[k]);
+    toast('Vista: '+k+'.py');
+  },()=>{if(confirm('¿Eliminar '+k+'.py?')){const s=LS.get('py_scripts',{});delete s[k];LS.set('py_scripts',s);Unity.refreshProj();refreshPyLoad();toast('Eliminado');}}));
+};
+Unity.refreshHier=function(){
+  const list=$('#hierList');list.innerHTML='';
+  if(!Unity.objects.length){list.innerHTML='<div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);padding:6px">Escena vacía. Añade objetos abajo.</div>';return;}
+  Unity.objects.forEach((o,i)=>{
+    const d=document.createElement('div');d.className='hier-item'+(Unity.selected===i?' sel':'');
+    const ico=o.type==='Light'?'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg>':'<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>';
+    d.innerHTML=ico+'<span>'+o.name+'</span><button class="del" title="Eliminar">×</button>';
+    d.addEventListener('click',e=>{if(e.target.classList.contains('del'))return;Unity.select(i);});
+    d.querySelector('.del').addEventListener('click',e=>{e.stopPropagation();Unity.remove(i);});
+    list.appendChild(d);
+  });
+};
+Unity.select=i=>{Unity.selected=i;Unity.refreshHier();Unity.updateArrow();};
+Unity.remove=i=>{const o=Unity.objects[i];if(o.mesh)Unity.scene.remove(o.mesh);if(o.light)Unity.scene.remove(o.light);Unity.objects.splice(i,1);if(Unity.selected===i)Unity.selected=null;else if(Unity.selected>i)Unity.selected--;Unity.refreshHier();Unity.saveScene();};
+Unity.addObject=type=>{
+  const count=Unity.objects.filter(o=>o.type===type).length;
+  const name=type+(count?(' '+count):'');
+  const obj={type,name,vy:0,vx:(Math.random()-0.5)*2,vz:(Math.random()-0.5)*2};
+  if(type==='Light'){const l=new THREE.PointLight(0xffd28a,1.2,30);l.position.set((Math.random()-0.5)*6,4,(Math.random()-0.5)*6);Unity.scene.add(l);obj.light=l;}
+  else{const geo=type==='Sphere'?new THREE.SphereGeometry(0.5,24,24):new THREE.BoxGeometry(1,1,1);const mat=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(Math.random(),0.6,0.55),roughness:0.4,metalness:0.2});const m=new THREE.Mesh(geo,mat);m.position.set((Math.random()-0.5)*6,4+Math.random()*3,(Math.random()-0.5)*6);m.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);Unity.scene.add(m);obj.mesh=m;}
+  Unity.objects.push(obj);Unity.selected=Unity.objects.length-1;Unity.refreshHier();Unity.saveScene();toast('Añadido: '+name);
+};
+Unity.updateArrow=function(){
+  if(Unity.arrow){Unity.scene.remove(Unity.arrow);Unity.arrow=null;}
+  if(Unity.selected===null)return;
+  const o=Unity.objects[Unity.selected];if(!o.mesh)return;
+  const dir=new THREE.Vector3(o.vx||0,Math.max(o.vy,-0.01),o.vz||0);if(dir.length()<0.1)dir.set(0,1,0);
+  Unity.arrow=new THREE.ArrowHelper(dir.clone().normalize(),o.mesh.position.clone(),1.5,0xffd28a,0.3,0.2);
+  Unity.scene.add(Unity.arrow);
+};
+Unity.saveScene=function(){
+  const data=Unity.objects.map(o=>({type:o.type,name:o.name,pos:o.mesh?[o.mesh.position.x,o.mesh.position.y,o.mesh.position.z]:(o.light?[o.light.position.x,o.light.position.y,o.light.position.z]:[0,0,0])}));
+  LS.set('unity_scene',data);
+};
+Unity.loadScene=function(){
+  // [SIMULACIÓN ELIMINADA] antes: si data era null/empty se creaban cubos por defecto.
+  // Ahora se carga EXCLUSIVAMENTE desde localStorage; escena vacía = vacía de verdad.
+  const data=LS.get('unity_scene',null);
+  if(!data) return;
+  data.forEach(d=>{
+    const obj={type:d.type,name:d.name,vy:0,vx:(Math.random()-0.5)*2,vz:(Math.random()-0.5)*2};
+    if(d.type==='Light'){const l=new THREE.PointLight(0xffd28a,1.2,30);l.position.set(...d.pos);Unity.scene.add(l);obj.light=l;}
+    else{const geo=d.type==='Sphere'?new THREE.SphereGeometry(0.5,24,24):new THREE.BoxGeometry(1,1,1);const mat=new THREE.MeshStandardMaterial({color:new THREE.Color().setHSL(Math.random(),0.6,0.55),roughness:0.4,metalness:0.2});const m=new THREE.Mesh(geo,mat);m.position.set(...d.pos);Unity.scene.add(m);obj.mesh=m;}
+    Unity.objects.push(obj);
+  });
+  Unity.refreshHier();
+};
+Unity.init=function(){
+  if(typeof THREE==='undefined'){$('#scriptView').textContent='// Three.js no disponible (sin conexión).';return;}
+  const canvas=$('#unityCanvas');
+  Unity.renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+  Unity.renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  Unity.scene=new THREE.Scene();Unity.scene.background=new THREE.Color(0x0a0c10);Unity.scene.fog=new THREE.Fog(0x0a0c10,15,40);
+  Unity.camera=new THREE.PerspectiveCamera(55,1,0.1,100);
+  const grid=new THREE.GridHelper(20,20,0xc47046,0x2a2a2f);Unity.scene.add(grid);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(20,20),new THREE.MeshStandardMaterial({color:0x1a1c20,roughness:0.9}));ground.rotation.x=-Math.PI/2;ground.position.y=-0.01;Unity.scene.add(ground);
+  Unity.scene.add(new THREE.AmbientLight(0xffffff,0.35));
+  const dir=new THREE.DirectionalLight(0xffffff,0.6);dir.position.set(5,10,7);Unity.scene.add(dir);
+  Unity.clock=new THREE.Clock();
+  Unity.loadScene();
+  Unity.ready=true;
+  $('#thDot').classList.remove('load');$('#thDot').classList.add('ok');
+  Unity.onResize();Unity.loop();
+  let dragging=false,lastX=0,lastY=0,theta=0.7,phi=1.1,radius=11;
+  function updCam(){Unity.camera.position.x=radius*Math.sin(phi)*Math.sin(theta);Unity.camera.position.y=radius*Math.cos(phi);Unity.camera.position.z=radius*Math.sin(phi)*Math.cos(theta);Unity.camera.lookAt(0,1,0);}
+  updCam();
+  canvas.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;});
+  window.addEventListener('pointerup',()=>dragging=false);
+  window.addEventListener('pointermove',e=>{if(!dragging)return;theta-=(e.clientX-lastX)*0.008;phi=Math.max(0.3,Math.min(1.4,phi-(e.clientY-lastY)*0.008));lastX=e.clientX;lastY=e.clientY;updCam();});
+  canvas.addEventListener('wheel',e=>{e.preventDefault();radius=Math.max(5,Math.min(25,radius+e.deltaY*0.01));updCam();},{passive:false});
+};
+Unity.onResize=function(){
+  if(!Unity.ready)return;
+  const wrap=$('#unityCanvas').parentElement;const w=wrap.clientWidth,h=wrap.clientHeight;
+  if(w<10||h<10)return;
+  Unity.renderer.setSize(w,h,false);Unity.camera.aspect=w/h;Unity.camera.updateProjectionMatrix();
+};
+window.addEventListener('resize',Unity.onResize);
+Unity.frames=0;Unity.fpsT=0;
+Unity.loop=function(){
+  Unity.animId=requestAnimationFrame(Unity.loop);
+  const dt=Math.min(Unity.clock.getDelta(),0.05);
+  Unity.frames++;Unity.fpsT+=dt;
+  if(Unity.fpsT>=0.5){$('#canvasHud').textContent='objetos: '+Unity.objects.length+' · fps: '+Math.round(Unity.frames/Unity.fpsT)+' · gravedad: '+Unity.gravity;Unity.frames=0;Unity.fpsT=0;}
+  if(Unity.physics){
+    Unity.objects.forEach(o=>{
+      if(!o.mesh)return;
+      o.vy-=Unity.gravity*dt;o.mesh.position.y+=o.vy*dt;o.mesh.position.x+=o.vx*dt;o.mesh.position.z+=o.vz*dt;
+      o.mesh.rotation.x+=dt*0.5;o.mesh.rotation.y+=dt*0.7;
+      if(o.mesh.position.y<0.5){o.mesh.position.y=0.5;o.vy*=-0.6;o.vx*=0.9;o.vz*=0.9;}
+      if(Math.abs(o.mesh.position.x)>9){o.vx*=-1;o.mesh.position.x=Math.sign(o.mesh.position.x)*9;}
+      if(Math.abs(o.mesh.position.z)>9){o.vz*=-1;o.mesh.position.z=Math.sign(o.mesh.position.z)*9;}
+    });
+    Unity.updateArrow();
+  }
+  Unity.renderer.render(Unity.scene,Unity.camera);
+};
+$$('[data-add]').forEach(b=>b.addEventListener('click',()=>Unity.addObject(b.dataset.add)));
+$('#physToggle').addEventListener('click',function(){Unity.physics=!Unity.physics;this.innerHTML=Unity.physics?'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Física: ON':'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12"/></svg>Física: OFF';this.classList.toggle('primary',Unity.physics);toast('Física '+(Unity.physics?'ON':'OFF'));});
+$('#sceneReset').addEventListener('click',()=>{Unity.objects.forEach(o=>{if(o.mesh)Unity.scene.remove(o.mesh);if(o.light)Unity.scene.remove(o.light);});Unity.objects=[];Unity.selected=null;if(Unity.arrow){Unity.scene.remove(Unity.arrow);Unity.arrow=null;}Unity.refreshHier();Unity.saveScene();toast('Escena vaciada (datos reales eliminados).');});
+$('#sceneSave').addEventListener('click',()=>{Unity.saveScene();toast('Escena guardada en localStorage');});
+$('#gravSlider').addEventListener('input',function(){Unity.gravity=parseFloat(this.value);$('#gravVal').textContent=this.value;});
+$('#expAll').addEventListener('click',()=>{const data={py_scripts:LS.get('py_scripts',{}),cs_templates:CS_SHARP,unity_scene:LS.get('unity_scene',[]),fs:FS,apibase:API_BASE,exportado:new Date().toISOString()};download('codeforge_backup.json',JSON.stringify(data,null,2),'application/json');toast('Copia de seguridad exportada (datos reales)');});
+$('#impAll').addEventListener('click',()=>$('#impFile').click());
+$('#impFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.py_scripts)LS.set('py_scripts',d.py_scripts);if(d.cs_templates){Object.assign(CS_SHARP,d.cs_templates);LS.set('cs_templates',CS_SHARP);}if(d.unity_scene)LS.set('unity_scene',d.unity_scene);if(d.fs){FS=d.fs;saveFS();}if(d.apibase){API_BASE=d.apibase;LS.set('apibase',API_BASE);}toast('Importado. Recarga para aplicar escena/FS.');refreshPyLoad();Unity.refreshProj();}catch(err){toast('Archivo inválido');}};r.readAsText(f);e.target.value='';});
+if(typeof THREE!=='undefined') Unity.init();
+else window.addEventListener('load',()=>setTimeout(Unity.init,300));
+Unity.refreshProj();
+})();
+</script>
+</body>
+</html>
